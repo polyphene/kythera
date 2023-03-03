@@ -8,8 +8,7 @@
 [mit-badge]: https://img.shields.io/badge/license-MIT-blue.svg
 [apache-badge]: https://img.shields.io/badge/license-APACHE_V2-blue.svg
 
-**Kythera is a FVM Native Toolset for Filecoin Virtual Machine Native Actor development, testing and deployment.**
-
+**Kythera is a Toolset for Filecoin Virtual Machine Native Actor development, testing and deployment.**
 
 ## WIP :construction:
 
