@@ -7,7 +7,7 @@
 
 <!-- Any notes or remarks you'd like to make about the PR. -->
 
-## Links to any relevant issues
+## Links to any relevant issues or pull requests
 
 <!-- Reference any related issues.-->
 
