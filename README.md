@@ -1,12 +1,15 @@
 # Kythera
 
-![Github Actions][gha-badge]
-![MIT licensed][mit-badge]
-![APACHE V2 licensed][apache-badge]
+[![Github Actions][gha-badge]][gha-url]
+[![MIT licensed][mit-badge]][mit-url]
+[![APACHE V2 licensed][apache-badge]][apache-url]
 
-[gha-badge]: https://img.shields.io/github/actions/workflow/status/polyphene/kythera/ci.yml?branch=master
+[gha-badge]: https://img.shields.io/github/actions/workflow/status/polyphene/kythera/ci.yml
+[gha-url]: https://github.com/polyphene/kythera/actions
 [mit-badge]: https://img.shields.io/badge/license-MIT-blue.svg
+[mit-url]: /LICENSE-MIT.txt
 [apache-badge]: https://img.shields.io/badge/license-APACHE_V2-blue.svg
+[apache-url]: /LICENSE-APACHE.txt
 
 **Kythera is a Toolset for Filecoin Virtual Machine Native Actor development, testing and deployment.**
 
