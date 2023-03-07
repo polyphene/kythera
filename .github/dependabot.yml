@@ -13,5 +13,5 @@ updates:
     schedule:
       interval: "daily"
     commit-message:
-      prefix: "deps"
+      prefix: "chore(deps)"
     rebase-strategy: "disabled"
