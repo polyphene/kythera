@@ -59,7 +59,7 @@ jobs:
         run: cargo test --package ${{ matrix.crate }} --all-features
 
       - name: Check if we compile without any features activated
-        run: cargo build --package ${{ matrix.crate }} --no-default-features
+        run: cargo --locked build --package ${{ matrix.crate }} --no-default-features
 
   clippy:
     runs-on: ubuntu-latest
