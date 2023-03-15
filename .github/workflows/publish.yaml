@@ -31,10 +31,10 @@ jobs:
         if: ${{ github.event_name == 'pull_request' }}
         with:
           command: publish
-          args: --dry-run
+          args: -p cli --dry-run
       # Publication flow should run on merge on the `main` branch
       - uses: actions-rs/cargo@v1
         if: ${{ github.event_name == 'push' }}
         with:
           command: publish
-          args: --token ${{secrets.CARGO_TOKEN}}
+          args: -p cli --token ${{secrets.CARGO_TOKEN}}
