@@ -6,6 +6,8 @@ on:
       - main  # Set a branch to deploy
   pull_request:
     types: [opened, reopened]
+    branches:
+      - main
 
 jobs:
   deploy-docs:
