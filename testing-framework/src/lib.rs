@@ -43,9 +43,10 @@ pub struct Tester {
     code_cids: Vec<Cid>,
     // State tree constructed before instantiating the Machine
     state_tree: StateTree<MemoryBlockstore>,
-
     // Account used for testing.
     account: Account,
+    // Id of the main Actor deployed to be tested.
+    main_actor_id: Option<Vec<u8>>,
 }
 
 /// Built-in Actors that are deployed to the testing `StateTree`.
@@ -86,6 +87,7 @@ impl Tester {
             code_cids: vec![],
             state_tree,
             account,
+            main_actor_id: None,
         }
     }
 
@@ -284,17 +286,27 @@ impl Tester {
         Ok(actor_address)
     }
 
+    /// Deploy the main Actor file into the `StateTree`.
+    pub fn deploy_main_actor(&mut self, actor: WasmActor) -> Result<(), Error> {
+        let address = self.deploy_actor_from_bin(&actor, TokenAmount::zero())?;
+        self.main_actor_id = match address.id() {
+            Ok(id) => Some(id.to_ne_bytes().to_vec()),
+            Err(_) => panic!("Actor Id should be valid"),
+        };
+
+        Ok(())
+    }
+
     /// Test an Actor on a `MemoryBlockstore`.
-    pub fn test(mut self, actor: WasmActor, test: WasmActor) -> Result<(), Error> {
+    pub fn test(&mut self, actor: WasmActor, test: WasmActor) -> Result<(), Error> {
         // TODO: Should we clone the `StateTree` before each test run,
         // and make our `Tester` stateless?
 
-        let actor_address = self.deploy_actor_from_bin(&actor, TokenAmount::zero())?;
-        let actor_id = actor_address
-            .id()
-            .expect("Actor Id should be valid")
-            .to_ne_bytes()
-            .to_vec();
+        let main_actor_id = self
+            .main_actor_id
+            .as_ref()
+            .cloned()
+            .ok_or(Error::MissingActor)?;
 
         let test_address = self.deploy_actor_from_bin(&test, TokenAmount::zero())?;
 
@@ -312,7 +324,7 @@ impl Tester {
             to: test_address,
             gas_limit: 1000000000,
             method_num: 1,
-            params: actor_id.into(),
+            params: main_actor_id.into(),
             ..Message::default()
         };
 

@@ -4,7 +4,7 @@
 /// Kythera testing-framework errors.
 #[derive(Debug, thiserror::Error)]
 pub enum Error {
-    #[error("Actor not loaded")]
+    #[error("Main Actor not loaded")]
     MissingActor,
     #[error("Could not set Actor: {name} on the BlockStore")]
     SettingActor {
