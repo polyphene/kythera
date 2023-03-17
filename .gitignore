@@ -1,1 +1,8 @@
+# Rust ignore
 /target
+**/*.rs.bk
+bin/
+pkg/
+
+# IDE ignore
+.idea/
