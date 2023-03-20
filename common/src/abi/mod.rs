@@ -10,23 +10,25 @@ use crate::error;
 mod blake2b;
 
 /// `ABI` is the structure we use internally to deal with Actor Binary Interface. It contains all
-/// exposed [`Methods`] from a given actor.
-struct ABI {
-    methods: Vec<Methods>,
+/// exposed [`Method`] from a given actor.
+#[derive(Clone, Debug)]
+pub struct ABI {
+    pub methods: Vec<Method>,
 }
 
 /// Method number indicator for calling actor methods.
 pub type MethodNum = u64;
 
-// `Methods` describes an exposed method from an actor entrypoint.
-struct Methods {
-    number: MethodNum,
-    name: String,
+/// `Methods` describes an exposed method from an actor entrypoint.
+#[derive(Clone, Debug)]
+pub struct Method {
+    pub number: MethodNum,
+    pub name: String,
 }
 
 /// `derive_method_num` will return the method number for a given method name based on the FRC-042:
 /// https://github.com/filecoin-project/FIPs/blob/master/FRCs/frc-0042.md
-fn derive_method_num(name: String) -> Result<MethodNum, error::Error> {
+pub fn derive_method_num(name: String) -> Result<MethodNum, error::Error> {
     let resolver = MethodResolver::new(Blake2bHasher {});
 
     return match resolver.method_number(name.as_str()) {

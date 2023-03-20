@@ -9,6 +9,7 @@ use futures::executor::block_on;
 use fvm_ipld_blockstore::{Block, Blockstore, MemoryBlockstore};
 use fvm_ipld_car::load_car_unchecked;
 use fvm_ipld_encoding::{serde::Serialize, CborStore};
+use kythera_common::abi::ABI;
 use kythera_fvm::{
     account_actor,
     engine::EnginePool,
@@ -54,15 +55,17 @@ struct BuiltInActors {
 }
 
 /// WebAssembly Actor.
+#[derive(Clone, Debug)]
 pub struct WasmActor {
     name: String,
     code: Vec<u8>,
+    abi: ABI,
 }
 
 impl WasmActor {
     /// Create a new WebAssembly Actor.
-    pub fn new(name: String, code: Vec<u8>) -> Self {
-        Self { name, code }
+    pub fn new(name: String, code: Vec<u8>, abi: ABI) -> Self {
+        Self { name, code, abi }
     }
 }
 
@@ -162,6 +165,9 @@ impl Tester {
 
         let code_cids = vec![];
 
+        // TODO concurrent testing
+        // We'll have to change the base EngineConfig we pass to the Engine Pool here. Concurency
+        // Could then default to the number of tests or to one we deem good to go.
         let engine = EnginePool::new_default((&mc.network.clone()).into())
             .expect("Should be able to start EnginePool");
         engine
@@ -313,23 +319,42 @@ impl Tester {
             .flush()
             .expect("Should be able to acquire the root CID by flushing");
 
-        let blockstore = self.state_tree.store().clone();
+        // TODO concurrent testing
+        // We'll be able to use thread to do concurrent testing once we set the Engine Pool with more than
+        // one possible concurrent engine.
+        for method in test.abi.methods {
+            let blockstore = self.state_tree.store().clone();
 
-        let mut executor = Self::new_executor(blockstore, root, self.builtin_actors.root);
+            let mut executor = Self::new_executor(blockstore, root, self.builtin_actors.root);
 
-        let message = Message {
-            from: self.account.1,
-            to: test_address,
-            gas_limit: 1000000000,
-            method_num: 1,
-            params: main_actor_id.into(),
-            ..Message::default()
-        };
+            let message = Message {
+                from: self.account.1,
+                to: test_address,
+                gas_limit: 1000000000,
+                method_num: method.number,
+                params: main_actor_id.clone().into(),
+                ..Message::default()
+            };
 
-        log::info!("testing test {} to Actor {}", test.name, actor.name);
-        executor
-            .execute_message(message, ApplyKind::Explicit, 100)
-            .tester_err(&format!("Could not test the Actor: {}", actor.name))
-            .map(|_| ())
+            log::info!(
+                "testing test {}.{}() to Actor {}",
+                test.name,
+                method.name,
+                actor.name
+            );
+            match executor
+                .execute_message(message, ApplyKind::Explicit, 100)
+                .tester_err(&format!(
+                    "Could not test {}.{}() to Actor: {}",
+                    test.name, method.name, actor.name
+                ))
+                .map(|_| ())
+            {
+                Err(e) => log::info!("{}", e.to_string()),
+                _ => {}
+            }
+        }
+
+        Ok(())
     }
 }

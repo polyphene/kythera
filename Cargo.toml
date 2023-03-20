@@ -4,5 +4,6 @@ members = [
     "cli",
     "lib",
     "fvm",
-    "common"
+    "common",
+    "lib/tests/*_actor",
 ]
