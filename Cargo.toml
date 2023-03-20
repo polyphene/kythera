@@ -3,4 +3,5 @@
 members = [
     "cli",
     "testing-framework",
+    "common"
 ]
