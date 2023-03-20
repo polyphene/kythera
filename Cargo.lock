@@ -59,9 +59,9 @@ dependencies = [
 
 [[package]]
 name = "anyhow"
-version = "1.0.69"
+version = "1.0.70"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "224afbd727c3d6e4b90103ece64b8d1b67fbb1973b1046c2281eed3f3803f800"
+checksum = "7de8ce5e0f9f8d88245311066a578d72b7af3e7088f32783804676302df237e4"
 dependencies = [
  "backtrace",
 ]
@@ -1910,34 +1910,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "fvm_integration_tests"
-version = "3.0.0"
-source = "git+https://github.com/filecoin-project/ref-fvm.git#622754f199dd4bb8cb140881a718a6c0ae4c47fd"
-dependencies = [
- "anyhow",
- "cid",
- "futures",
- "fvm",
- "fvm_ipld_amt 0.5.1 (git+https://github.com/filecoin-project/ref-fvm.git)",
- "fvm_ipld_blockstore 0.1.1 (git+https://github.com/filecoin-project/ref-fvm.git)",
- "fvm_ipld_car 0.6.0 (git+https://github.com/filecoin-project/ref-fvm.git)",
- "fvm_ipld_encoding 0.3.3 (git+https://github.com/filecoin-project/ref-fvm.git)",
- "fvm_ipld_hamt 0.6.1 (git+https://github.com/filecoin-project/ref-fvm.git)",
- "fvm_shared 3.1.0",
- "lazy_static",
- "libsecp256k1",
- "multihash",
- "num-traits",
- "rand",
- "rand_chacha",
- "serde",
- "serde_repr",
- "serde_tuple",
- "thiserror",
- "wasmtime",
-]
-
-[[package]]
 name = "fvm_ipld_amt"
 version = "0.5.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2464,6 +2436,37 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "0de8b303297635ad57c9f5059fd9cee7a47f8e8daa09df0fcd07dd39fb22977f"
 dependencies = [
  "log",
+]
+
+[[package]]
+name = "kythera-fvm"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "cid",
+ "fvm",
+ "fvm_ipld_encoding 0.3.3 (git+https://github.com/filecoin-project/ref-fvm.git)",
+ "fvm_shared 3.1.0",
+ "multihash",
+]
+
+[[package]]
+name = "kythera-lib"
+version = "0.1.0"
+dependencies = [
+ "cid",
+ "fil_builtin_actors_bundle",
+ "futures",
+ "fvm_ipld_blockstore 0.1.1 (git+https://github.com/filecoin-project/ref-fvm.git)",
+ "fvm_ipld_car 0.6.0 (git+https://github.com/filecoin-project/ref-fvm.git)",
+ "fvm_ipld_encoding 0.3.3 (git+https://github.com/filecoin-project/ref-fvm.git)",
+ "fvm_shared 3.1.0",
+ "kythera-fvm",
+ "libsecp256k1",
+ "log",
+ "rand",
+ "rand_chacha",
+ "thiserror",
 ]
 
 [[package]]
@@ -3677,26 +3680,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "be55cf8942feac5c765c2c993422806843c9a9a45d4d5c407ad6dd2ea95eb9b6"
 dependencies = [
  "winapi-util",
-]
-
-[[package]]
-name = "testing-framework"
-version = "0.1.0"
-dependencies = [
- "cid",
- "fil_builtin_actors_bundle",
- "futures",
- "fvm",
- "fvm_integration_tests",
- "fvm_ipld_blockstore 0.1.1 (git+https://github.com/filecoin-project/ref-fvm.git)",
- "fvm_ipld_car 0.6.0 (git+https://github.com/filecoin-project/ref-fvm.git)",
- "fvm_ipld_encoding 0.3.3 (git+https://github.com/filecoin-project/ref-fvm.git)",
- "fvm_shared 3.1.0",
- "libsecp256k1",
- "log",
- "rand",
- "rand_chacha",
- "thiserror",
 ]
 
 [[package]]

@@ -6,21 +6,19 @@ mod error;
 use cid::{multihash::Code, Cid};
 use fil_builtin_actors_bundle::BUNDLE_CAR;
 use futures::executor::block_on;
-use fvm::{
-    engine::EnginePool,
-    executor::{ApplyKind, DefaultExecutor, Executor},
-    init_actor,
-    machine::{DefaultMachine, Manifest, NetworkConfig},
-    state_tree::{ActorState, StateTree},
-    system_actor,
-};
-use fvm_integration_tests::{
-    dummy::DummyExterns,
-    tester::{Account, IntegrationExecutor},
-};
 use fvm_ipld_blockstore::{Block, Blockstore, MemoryBlockstore};
 use fvm_ipld_car::load_car_unchecked;
 use fvm_ipld_encoding::{serde::Serialize, CborStore};
+use kythera_fvm::{
+    account_actor,
+    engine::EnginePool,
+    executor::{ApplyKind, Executor, KytheraExecutor},
+    externs::FakeExterns,
+    init_actor,
+    machine::{KytheraMachine, Manifest, NetworkConfig},
+    state_tree::{ActorState, StateTree},
+    system_actor, Account,
+};
 use libsecp256k1::{PublicKey, SecretKey};
 use rand::SeedableRng;
 
@@ -153,7 +151,7 @@ impl Tester {
         blockstore: B,
         state_root: Cid,
         builtin_actors: Cid,
-    ) -> IntegrationExecutor<B, DummyExterns> {
+    ) -> KytheraExecutor<B, FakeExterns> {
         let mut nc = NetworkConfig::new(NETWORK_VERSION);
         nc.override_actors(builtin_actors);
         nc.enable_actor_debugging();
@@ -171,10 +169,10 @@ impl Tester {
             .preload(&blockstore, &code_cids)
             .expect("Should be able to preload Executor");
 
-        let machine = DefaultMachine::new(&mc, blockstore, DummyExterns)
-            .expect("Should be able to start DefaultMachine");
+        let machine = KytheraMachine::new(&mc, blockstore, FakeExterns::new())
+            .expect("Should be able to start KytheraMachine");
 
-        DefaultExecutor::new(engine, machine).expect("Should be able to start Executor")
+        KytheraExecutor::new(engine, machine).expect("Should be able to start Executor")
     }
 
     /// set actor on the `Blockstore`.
@@ -224,7 +222,7 @@ impl Tester {
             .register_new_address(&pub_key_addr)
             .expect("Should be able to register an account public key on the StateTree");
 
-        let state = fvm::account_actor::State {
+        let state = account_actor::State {
             address: pub_key_addr,
         };
 

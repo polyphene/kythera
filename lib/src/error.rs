@@ -1,7 +1,7 @@
 // Copyright 2023 Polyphene.
 // SPDX-License-Identifier: Apache-2.0, MIT
 
-/// Kythera testing-framework errors.
+/// Kythera lib errors.
 #[derive(Debug, thiserror::Error)]
 pub enum Error {
     #[error("Main Actor not loaded")]
