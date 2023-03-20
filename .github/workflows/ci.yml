@@ -34,7 +34,6 @@ jobs:
       - uses: dorny/paths-filter@v2
         id: filter
         with:
-          # add here any crate (name + filter tuple) to be tested
           filters: |
             cli: cli/Cargo.toml
 
