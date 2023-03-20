@@ -23,17 +23,20 @@ jobs:
     steps:
       - run: exit 0
 
+  # Job to filter crates to be published
   gather_crates:
     runs-on: ubuntu-latest
+    permissions:
+      pull-requests: read
     outputs:
-      members: ${{ steps.cargo-metadata.outputs.members }}
+      crates: ${{ steps.filter.outputs.changes }}
     steps:
-      - uses: actions/checkout@v3
-
-      - id: cargo-metadata
-        run: |
-          WORKSPACE_MEMBERS=$(cargo metadata --format-version=1 --no-deps | jq -c '.packages | .[] | select(.publish == null) | .name' | jq -s '.' | jq -c '.')
-          echo "members=${WORKSPACE_MEMBERS}" >> $GITHUB_OUTPUT
+      - uses: dorny/paths-filter@v2
+        id: filter
+        with:
+          # add here any crate (name + filter tuple) to be tested
+          filters: |
+            cli: cli/Cargo.toml
 
   test-and-publish:
     name: Test ${{ matrix.crate }}
@@ -42,7 +45,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        crate: ${{ fromJSON(needs.gather_crates.outputs.members) }}
+        crate: ${{ fromJSON(needs.gather_crates.outputs.crates) }}
     steps:
       - uses: actions/checkout@v3
 
