@@ -12,7 +12,7 @@ mod blake2b;
 /// `ABI` is the structure we use internally to deal with Actor Binary Interface. It contains all
 /// exposed [`Method`] from a given actor.
 #[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord)]
-pub struct ABI {
+pub struct Abi {
     pub methods: Vec<Method>,
 }
 
@@ -28,14 +28,14 @@ pub struct Method {
 
 /// `derive_method_num` will return the method number for a given method name based on the FRC-042:
 /// https://github.com/filecoin-project/FIPs/blob/master/FRCs/frc-0042.md
-pub fn derive_method_num(name: String) -> Result<MethodNum, error::Error> {
+pub fn derive_method_num(name: &str) -> Result<MethodNum, error::Error> {
     let resolver = MethodResolver::new(Blake2bHasher {});
 
-    return match resolver.method_number(name.as_str()) {
+    return match resolver.method_number(name) {
         Ok(method_number) => Ok(method_number),
         Err(err) => {
             return Err(error::Error::MethodNumberGeneration {
-                name,
+                name: name.into(),
                 source: err.into(),
             });
         }
@@ -50,7 +50,7 @@ mod test {
     fn test_method_derivation() {
         let method_name = String::from("TestTransfer");
 
-        match derive_method_num(method_name.clone()) {
+        match derive_method_num(&method_name) {
             Ok(method_num) => {
                 assert_eq!(method_num, 3760293944);
             }
@@ -65,7 +65,7 @@ mod test {
         // Using function with lower case as first character in method name to fail the test
         let method_name = String::from("test_transfer");
 
-        match derive_method_num(method_name.clone()) {
+        match derive_method_num(&method_name) {
             Ok(_) => {
                 panic!("derive_method_num success for {}", method_name);
             }
