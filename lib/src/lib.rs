@@ -127,11 +127,14 @@ impl Tester {
     }
 
     /// Deploy the target Actor file into the `StateTree`.
-    pub fn deploy_target_actor(&mut self, name: String, actor: WasmActor) -> Result<(), Error> {
+    pub fn deploy_target_actor(&mut self, actor: WasmActor) -> Result<(), Error> {
         let address = self
             .state_tree
             .deploy_actor_from_bin(&actor, TokenAmount::zero())?;
-        self.target_actor = Some(DeployedActor { name, address });
+        self.target_actor = Some(DeployedActor {
+            name: actor.name,
+            address,
+        });
 
         Ok(())
     }
@@ -339,9 +342,9 @@ mod tests {
                 },
             ],
         };
-        let test_actor = WasmActor::new(String::from("Test"), test_wasm_bin, test_abi);
+        let test_actor = WasmActor::new(String::from("Basic"), test_wasm_bin, test_abi);
 
-        match tester.deploy_target_actor("Basic".into(), target_actor.clone()) {
+        match tester.deploy_target_actor(target_actor) {
             Err(_) => {
                 panic!("Could not set target Actor when testing Tester")
             }
