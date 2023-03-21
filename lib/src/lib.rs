@@ -344,7 +344,7 @@ mod tests {
         };
         let test_actor = WasmActor::new(String::from("Test"), test_wasm_bin, test_abi);
 
-        match tester.deploy_target_actor("Basic".into(), target_actor.clone()) {
+        match tester.deploy_target_actor(target_actor.clone()) {
             Err(_) => {
                 panic!("Could not set target Actor when testing Tester")
             }
