@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0, MIT
 use cid::Cid;
 
-use kythera_common::abi::Abi;
+pub use kythera_common::abi::Abi;
 use kythera_fvm::{
     engine::EnginePool,
     executor::{ApplyKind, ApplyRet, Executor, KytheraExecutor},
