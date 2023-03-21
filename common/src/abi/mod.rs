@@ -11,7 +11,7 @@ mod blake2b;
 
 /// `ABI` is the structure we use internally to deal with Actor Binary Interface. It contains all
 /// exposed [`Method`] from a given actor.
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord)]
 pub struct ABI {
     pub methods: Vec<Method>,
 }
@@ -20,7 +20,7 @@ pub struct ABI {
 pub type MethodNum = u64;
 
 /// `Methods` describes an exposed method from an actor entrypoint.
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord)]
 pub struct Method {
     pub number: MethodNum,
     pub name: String,

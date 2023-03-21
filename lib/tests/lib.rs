@@ -42,14 +42,14 @@ fn test_tester() {
     };
     let test_actor = WasmActor::new(String::from("Test"), test_wasm_bin, test_abi);
 
-    match tester.deploy_main_actor(target_actor.clone()) {
+    match tester.deploy_main_actor("Basic".into(), target_actor.clone()) {
         Err(_) => {
             panic!("Could not set main actor when testing Tester")
         }
         _ => {}
     }
 
-    match tester.test(target_actor, test_actor) {
+    match tester.test(&test_actor) {
         Err(_) => {
             panic!("Could not run test when testing Tester")
         }
