@@ -1,33 +1,33 @@
 // Copyright 2023 Polyphene.
 // SPDX-License-Identifier: Apache-2.0, MIT
-
-mod error;
-
 use cid::{multihash::Code, Cid};
 use futures::executor::block_on;
-use fvm_ipld_blockstore::{Block, Blockstore, MemoryBlockstore};
-use fvm_ipld_car::load_car_unchecked;
-use fvm_ipld_encoding::{serde::Serialize, CborStore};
+use libsecp256k1::{PublicKey, SecretKey};
+use rand::SeedableRng;
+
 use kythera_common::abi::ABI;
 use kythera_fvm::{
     account_actor,
     engine::EnginePool,
-    executor::{ApplyKind, Executor, KytheraExecutor},
+    executor::{ApplyKind, ApplyRet, Executor, KytheraExecutor},
     externs::FakeExterns,
     init_actor,
     machine::{KytheraMachine, Manifest, NetworkConfig},
     state_tree::{ActorState, StateTree},
     system_actor, Account,
 };
-use libsecp256k1::{PublicKey, SecretKey};
-use rand::SeedableRng;
 
-use error::{Error, WrapFVMError};
+use fvm_ipld_blockstore::{Block, Blockstore, MemoryBlockstore};
+use fvm_ipld_car::load_car_unchecked;
+use fvm_ipld_encoding::{serde::Serialize, CborStore};
 use fvm_shared::{
     address::Address, bigint::Zero, econ::TokenAmount, message::Message, state::StateTreeVersion,
     version::NetworkVersion, ActorID, IPLD_RAW,
 };
-use kythera_fvm::executor::ApplyRet;
+
+use error::{Error, WrapFVMError};
+
+mod error;
 
 // TODO: document purpose.
 const EAM_ACTOR_ID: ActorID = 10;
@@ -76,7 +76,7 @@ impl Tester {
         let bs = MemoryBlockstore::default();
 
         // Initialize state tree
-        let mut state_tree = StateTree::new(bs, StateTreeVersion::V5)
+        let mut state_tree = StateTree::new(bs, STATE_TREE_VERSION)
             .expect("Should be able to put the Version in the StateTree");
 
         let builtin_actors = Self::load_builtin_actors(&mut state_tree);
@@ -99,8 +99,9 @@ impl Tester {
         let blockstore = state_tree.store();
 
         // Load the built-in Actors
-        let builtin_actors = block_on(async { load_car_unchecked(blockstore, BUNDLE_CAR).await })
-            .expect("Should be able to import built-in Actors")[0];
+        let builtin_actors =
+            block_on(async { load_car_unchecked(blockstore, actors_v10::BUNDLE_CAR).await })
+                .expect("Should be able to import built-in Actors")[0];
 
         let (version, root) = blockstore
             .get_cbor::<(u32, Cid)>(&builtin_actors)

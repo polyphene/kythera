@@ -40,10 +40,12 @@ fn invoke(_input: u32) -> u32 {
     }
 }
 
+#[allow(non_snake_case)]
 fn TestOne() -> &'static str {
     "TestOne"
 }
 
+#[allow(non_snake_case)]
 fn TestTwo() -> &'static str {
     "TestTwo"
 }
