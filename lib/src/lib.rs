@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0, MIT
 use cid::Cid;
 
-use kythera_common::abi::ABI;
+use kythera_common::abi::Abi;
 use kythera_fvm::{
     engine::EnginePool,
     executor::{ApplyKind, ApplyRet, Executor, KytheraExecutor},
@@ -42,12 +42,12 @@ pub struct Tester {
 pub struct WasmActor {
     name: String,
     bytecode: Vec<u8>,
-    abi: ABI,
+    abi: Abi,
 }
 
 impl WasmActor {
     /// Create a new WebAssembly Actor.
-    pub fn new(name: String, bytecode: Vec<u8>, abi: ABI) -> Self {
+    pub fn new(name: String, bytecode: Vec<u8>, abi: Abi) -> Self {
         Self {
             name,
             bytecode,
@@ -118,8 +118,8 @@ impl Tester {
         KytheraExecutor::new(engine, machine).expect("Should be able to start Executor")
     }
 
-    /// Deploy the main Actor file into the `StateTree`.
-    pub fn deploy_main_actor(&mut self, name: String, actor: WasmActor) -> Result<(), Error> {
+    /// Deploy the target Actor file into the `StateTree`.
+    pub fn deploy_target_actor(&mut self, name: String, actor: WasmActor) -> Result<(), Error> {
         let address = self
             .state_tree
             .deploy_actor_from_bin(&actor, TokenAmount::zero())?;
@@ -208,5 +208,156 @@ impl Tester {
 impl Default for Tester {
     fn default() -> Self {
         Self::new()
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use fvm_shared::error::ExitCode;
+    use kythera_test_actors::wasm_bin::BASIC_TEST_ACTOR_BINARY;
+
+    use super::*;
+    use kythera_common::abi::{Abi, Method};
+
+    const TARGET_WAT: &str = r#"
+        ;; Mock invoke function
+            (module
+                (func (export "invoke") (param $x i32) (result i32)
+                    (i32.const 1)
+                )
+            )
+        "#;
+
+    #[test]
+    fn test_tester_instantiation() {
+        // Get state_tree loaded with builtins
+        let mut state_tree = StateTree::new();
+        let builtins_actors = state_tree.load_builtin_actors();
+
+        // Instantiate tester
+        let tester = Tester::new();
+
+        // Testing that we got proper CIDs for our revision for builtin actors and that they are
+        // set in the state tree
+        assert_eq!(tester.builtin_actors.root, builtins_actors.root);
+        assert!(tester
+            .state_tree
+            .store()
+            .has(&builtins_actors.root)
+            .unwrap());
+
+        assert_eq!(
+            *tester.builtin_actors.manifest.get_system_code(),
+            *builtins_actors.manifest.get_system_code()
+        );
+        assert!(tester
+            .state_tree
+            .store()
+            .has(&*builtins_actors.manifest.get_system_code())
+            .unwrap());
+
+        assert_eq!(
+            *tester.builtin_actors.manifest.get_init_code(),
+            *builtins_actors.manifest.get_init_code()
+        );
+        assert!(tester
+            .state_tree
+            .store()
+            .has(&*builtins_actors.manifest.get_init_code())
+            .unwrap());
+
+        assert_eq!(
+            *tester.builtin_actors.manifest.get_account_code(),
+            *builtins_actors.manifest.get_account_code()
+        );
+        assert!(tester
+            .state_tree
+            .store()
+            .has(&*builtins_actors.manifest.get_account_code())
+            .unwrap());
+
+        assert_eq!(
+            *tester.builtin_actors.manifest.get_placeholder_code(),
+            *builtins_actors.manifest.get_placeholder_code()
+        );
+        assert!(tester
+            .state_tree
+            .store()
+            .has(&*builtins_actors.manifest.get_placeholder_code())
+            .unwrap());
+
+        assert_eq!(
+            *tester.builtin_actors.manifest.get_eam_code(),
+            *builtins_actors.manifest.get_eam_code()
+        );
+        assert!(tester
+            .state_tree
+            .store()
+            .has(&*builtins_actors.manifest.get_eam_code())
+            .unwrap());
+
+        assert_eq!(tester.account.0, 100);
+
+        assert!(tester.target_actor.is_none());
+    }
+
+    #[test]
+    fn test_tester_test() {
+        // Instantiate tester
+        let mut tester = Tester::new();
+
+        // Set target actor
+        let target_wasm_bin = wat::parse_str(TARGET_WAT).unwrap();
+        let target_abi = Abi { methods: vec![] };
+        let target_actor = WasmActor::new(String::from("Target"), target_wasm_bin, target_abi);
+
+        // Set test actor
+        let test_wasm_bin: Vec<u8> = Vec::from(BASIC_TEST_ACTOR_BINARY);
+        let test_abi = Abi {
+            methods: vec![
+                Method {
+                    number: 3948827889,
+                    name: String::from("TestOne"),
+                },
+                Method {
+                    number: 891686990,
+                    name: String::from("TestTwo"),
+                },
+            ],
+        };
+        let test_actor = WasmActor::new(String::from("Test"), test_wasm_bin, test_abi);
+
+        match tester.deploy_target_actor("Basic".into(), target_actor.clone()) {
+            Err(_) => {
+                panic!("Could not set target Actor when testing Tester")
+            }
+            _ => {}
+        }
+
+        match tester.test(&test_actor) {
+            Err(_) => {
+                panic!("Could not run test when testing Tester")
+            }
+            Ok(test_res) => {
+                assert_eq!(test_res.len(), 2usize);
+
+                test_res
+                    .iter()
+                    .enumerate()
+                    .for_each(|(i, option_apply_ret)| match option_apply_ret {
+                        Some(apply_ret) => {
+                            assert_eq!(apply_ret.msg_receipt.exit_code, ExitCode::OK);
+                            let ret_value: String =
+                                apply_ret.msg_receipt.return_data.deserialize().unwrap();
+                            if i == 0usize {
+                                assert_eq!(ret_value, String::from("TestOne"))
+                            } else {
+                                assert_eq!(ret_value, String::from("TestTwo"))
+                            }
+                        }
+                        _ => panic!("test against basic test actor should pass"),
+                    })
+            }
+        }
     }
 }
