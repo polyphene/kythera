@@ -73,6 +73,13 @@ struct DeployedActor {
     address: Address,
 }
 
+/// An Actor that has been deployed into a `BlockStore`.
+#[derive(Debug)]
+pub struct TestResults {
+    pub test_actor: WasmActor,
+    pub results: Result<Vec<Option<ApplyRet>>, Error>,
+}
+
 impl Tester {
     /// Create a new Kythera Tester.
     pub fn new() -> Self {
@@ -129,7 +136,7 @@ impl Tester {
     }
 
     /// Test an Actor on a `MemoryBlockstore`.
-    pub fn test(&mut self, test_actor: &WasmActor) -> Result<Vec<Option<ApplyRet>>, Error> {
+    pub fn test(&mut self, test_actors: &[WasmActor]) -> Result<Vec<TestResults>, Error> {
         // TODO: Should we clone the `StateTree` before each test run,
         // and make our `Tester` stateless?
         let target = self
@@ -143,62 +150,86 @@ impl Tester {
             Err(_) => panic!("Actor Id should be valid"),
         };
 
-        let test_address = self
-            .state_tree
-            .deploy_actor_from_bin(test_actor, TokenAmount::zero())?;
-
-        let root = self.state_tree.flush();
-
-        log::info!("Testing Actor {}", target.name);
-
-        // TODO concurrent testing
-        // We'll be able to use thread to do concurrent testing once we set the Engine Pool with more than
-        // one possible concurrent engine.
-        Ok(test_actor
-            .abi
-            .methods
+        // Iterate over all test actors
+        Ok(test_actors
             .iter()
-            .map(|method| {
-                let blockstore = self.state_tree.store().clone();
-
-                let mut executor = Self::new_executor(blockstore, root, self.builtin_actors.root);
-
-                let message = Message {
-                    from: self.account.1,
-                    to: test_address,
-                    gas_limit: 1000000000,
-                    method_num: method.number,
-                    params: target_id.clone().into(),
-                    ..Message::default()
+            .map(|test_actor| {
+                // Deploy test actor
+                let test_address = match self
+                    .state_tree
+                    .deploy_actor_from_bin(test_actor, TokenAmount::zero())
+                {
+                    // Properly deployed, get address
+                    Ok(test_address) => test_address,
+                    // Error on deployment, return error as part of [`TestResults`]
+                    Err(err) => {
+                        return TestResults {
+                            test_actor: test_actor.clone(),
+                            results: Err(err),
+                        }
+                    }
                 };
 
-                log::info!(
-                    "Testing test {}.{}() for Actor {}",
-                    test_actor.name,
-                    method.name,
-                    target.name
-                );
-                match executor.execute_message(message, ApplyKind::Explicit, 100) {
-                    Err(err) => {
-                        log::info!(
-                            "Error while testing {}.{}() for Actor: {}",
-                            test_actor.name,
-                            method.name,
-                            target.name
-                        );
-                        log::info!("{}", err.to_string());
-                        None
-                    }
-                    Ok(apply_ret) => {
-                        log::info!(
-                            "Could test  {}.{}() for Actor: {}",
-                            test_actor.name,
-                            method.name,
-                            target.name
-                        );
+                let root = self.state_tree.flush();
 
-                        Some(apply_ret)
-                    }
+                log::info!("Testing Actor {}", target.name);
+
+                // TODO concurrent testing
+                // We'll be able to use thread to do concurrent testing once we set the Engine Pool with more than
+                // one possible concurrent engine.
+                // The following steps will not end up in a result. Either we could finalize message
+                // handling and we return the related ApplyRet or we return nothing.
+                TestResults {
+                    test_actor: test_actor.clone(),
+                    results: Ok(test_actor
+                        .abi
+                        .methods
+                        .iter()
+                        .map(|method| {
+                            let blockstore = self.state_tree.store().clone();
+
+                            let mut executor =
+                                Self::new_executor(blockstore, root, self.builtin_actors.root);
+
+                            let message = Message {
+                                from: self.account.1,
+                                to: test_address,
+                                gas_limit: 1000000000,
+                                method_num: method.number,
+                                params: target_id.clone().into(),
+                                ..Message::default()
+                            };
+
+                            log::info!(
+                                "Testing test {}.{}() for Actor {}",
+                                test_actor.name,
+                                method.name,
+                                target.name
+                            );
+                            match executor.execute_message(message, ApplyKind::Explicit, 100) {
+                                Err(err) => {
+                                    log::info!(
+                                        "Error while testing {}.{}() for Actor: {}",
+                                        test_actor.name,
+                                        method.name,
+                                        target.name
+                                    );
+                                    log::info!("{}", err.to_string());
+                                    None
+                                }
+                                Ok(apply_ret) => {
+                                    log::info!(
+                                        "Could test  {}.{}() for Actor: {}",
+                                        test_actor.name,
+                                        method.name,
+                                        target.name
+                                    );
+
+                                    Some(apply_ret)
+                                }
+                            }
+                        })
+                        .collect()),
                 }
             })
             .collect())
@@ -334,14 +365,19 @@ mod tests {
             _ => {}
         }
 
-        match tester.test(&test_actor) {
+        match tester.test(&[test_actor.clone()]) {
             Err(_) => {
                 panic!("Could not run test when testing Tester")
             }
             Ok(test_res) => {
-                assert_eq!(test_res.len(), 2usize);
+                assert_eq!(test_res.len(), 1usize);
+                assert_eq!(test_res[0].results.as_ref().unwrap().len(), 2usize);
+                assert_eq!(test_res[0].test_actor, test_actor);
 
-                test_res
+                test_res[0]
+                    .results
+                    .as_ref()
+                    .unwrap()
                     .iter()
                     .enumerate()
                     .for_each(|(i, option_apply_ret)| match option_apply_ret {
