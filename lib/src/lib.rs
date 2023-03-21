@@ -145,7 +145,7 @@ impl Tester {
 
         let test_address = self
             .state_tree
-            .deploy_actor_from_bin(&test_actor, TokenAmount::zero())?;
+            .deploy_actor_from_bin(test_actor, TokenAmount::zero())?;
 
         let root = self.state_tree.flush();
 

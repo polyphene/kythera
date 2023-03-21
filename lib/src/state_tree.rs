@@ -127,7 +127,7 @@ impl StateTree {
 
         self.set_actor(
             "Eam Actor",
-            &[(); 0],
+            [(); 0],
             *manifest.get_eam_code(),
             // EAM Actor Id.
             EAM_ACTOR_ID,
@@ -205,7 +205,7 @@ impl StateTree {
             .setting_err(&actor.name)?;
 
         // Set the Actor State on the `BlockStore`.
-        self.set_actor(&actor.name, &[(); 0], code_cid, actor_id, 0, balance)?;
+        self.set_actor(&actor.name, [(); 0], code_cid, actor_id, 0, balance)?;
 
         Ok(actor_address)
     }
