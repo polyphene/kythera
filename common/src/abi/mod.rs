@@ -9,7 +9,7 @@ use crate::error;
 
 mod blake2b;
 
-/// `ABI` is the structure we use internally to deal with Actor Binary Interface. It contains all
+/// `Abi` is the structure we use internally to deal with Actor Binary Interface. It contains all
 /// exposed [`Method`] from a given actor.
 #[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord)]
 pub struct Abi {
