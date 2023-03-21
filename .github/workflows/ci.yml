@@ -31,6 +31,7 @@ jobs:
     outputs:
       crates: ${{ steps.filter.outputs.changes }}
     steps:
+      - uses: actions/checkout@v3
       - uses: dorny/paths-filter@v2
         id: filter
         with:
