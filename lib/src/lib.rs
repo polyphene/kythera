@@ -4,7 +4,6 @@
 mod error;
 
 use cid::{multihash::Code, Cid};
-use fil_builtin_actors_bundle::BUNDLE_CAR;
 use futures::executor::block_on;
 use fvm_ipld_blockstore::{Block, Blockstore, MemoryBlockstore};
 use fvm_ipld_car::load_car_unchecked;
@@ -28,10 +27,12 @@ use fvm_shared::{
     address::Address, bigint::Zero, econ::TokenAmount, message::Message, state::StateTreeVersion,
     version::NetworkVersion, ActorID, IPLD_RAW,
 };
+use kythera_fvm::executor::ApplyRet;
 
 // TODO: document purpose.
 const EAM_ACTOR_ID: ActorID = 10;
 const NETWORK_VERSION: NetworkVersion = NetworkVersion::V18;
+const STATE_TREE_VERSION: StateTreeVersion = StateTreeVersion::V5;
 const DEFAULT_BASE_FEE: u64 = 100;
 
 /// Main interface to test `Actor`s with Kythera.
@@ -96,6 +97,7 @@ impl Tester {
     /// And activate them on the `StateTree`.
     fn load_builtin_actors<B: Blockstore>(state_tree: &mut StateTree<B>) -> BuiltInActors {
         let blockstore = state_tree.store();
+
         // Load the built-in Actors
         let builtin_actors = block_on(async { load_car_unchecked(blockstore, BUNDLE_CAR).await })
             .expect("Should be able to import built-in Actors")[0];
@@ -105,7 +107,7 @@ impl Tester {
             .expect("Should be able to decode the built-in Actor CBOR")
             .expect("There should be manifest information for built-in Actor Cid");
 
-        let manifest = Manifest::load(blockstore, &root, version)
+        let manifest = Manifest::load(&blockstore, &root, version)
             .expect("Should be able to load built-in Actor manifest");
 
         // deploy built-in Actors on the StateTree.
@@ -146,7 +148,11 @@ impl Tester {
             Default::default(),
         )
         .expect("Should be able to set the Eam Actor");
-        BuiltInActors { root, manifest }
+
+        BuiltInActors {
+            root: builtin_actors,
+            manifest,
+        }
     }
 
     /// Create a new `Executor` to test the provided test Actor.
@@ -154,16 +160,16 @@ impl Tester {
         blockstore: B,
         state_root: Cid,
         builtin_actors: Cid,
+        code_cids: Vec<Cid>,
     ) -> KytheraExecutor<B, FakeExterns> {
         let mut nc = NetworkConfig::new(NETWORK_VERSION);
+
         nc.override_actors(builtin_actors);
         nc.enable_actor_debugging();
 
         let mut mc = nc.for_epoch(0, 0, state_root);
         mc.set_base_fee(TokenAmount::from_atto(DEFAULT_BASE_FEE))
             .enable_tracing();
-
-        let code_cids = vec![];
 
         // TODO concurrent testing
         // We'll have to change the base EngineConfig we pass to the Engine Pool here. Concurency
@@ -302,7 +308,11 @@ impl Tester {
     }
 
     /// Test an Actor on a `MemoryBlockstore`.
-    pub fn test(&mut self, actor: WasmActor, test: WasmActor) -> Result<(), Error> {
+    pub fn test(
+        &mut self,
+        actor: WasmActor,
+        test: WasmActor,
+    ) -> Result<Vec<Option<ApplyRet>>, Error> {
         // TODO: Should we clone the `StateTree` before each test run,
         // and make our `Tester` stateless?
 
@@ -322,39 +332,58 @@ impl Tester {
         // TODO concurrent testing
         // We'll be able to use thread to do concurrent testing once we set the Engine Pool with more than
         // one possible concurrent engine.
-        for method in test.abi.methods {
-            let blockstore = self.state_tree.store().clone();
+        return Ok(test
+            .abi
+            .methods
+            .iter()
+            .map(|method| {
+                let blockstore = self.state_tree.store().clone();
 
-            let mut executor = Self::new_executor(blockstore, root, self.builtin_actors.root);
+                let mut executor = Self::new_executor(
+                    blockstore,
+                    root,
+                    self.builtin_actors.root,
+                    self.code_cids.clone(),
+                );
 
-            let message = Message {
-                from: self.account.1,
-                to: test_address,
-                gas_limit: 1000000000,
-                method_num: method.number,
-                params: main_actor_id.clone().into(),
-                ..Message::default()
-            };
+                let message = Message {
+                    from: self.account.1,
+                    to: test_address,
+                    gas_limit: 1000000000,
+                    method_num: method.number,
+                    params: main_actor_id.clone().into(),
+                    ..Message::default()
+                };
 
-            log::info!(
-                "testing test {}.{}() to Actor {}",
-                test.name,
-                method.name,
-                actor.name
-            );
-            match executor
-                .execute_message(message, ApplyKind::Explicit, 100)
-                .tester_err(&format!(
-                    "Could not test {}.{}() to Actor: {}",
-                    test.name, method.name, actor.name
-                ))
-                .map(|_| ())
-            {
-                Err(e) => log::info!("{}", e.to_string()),
-                _ => {}
-            }
-        }
+                log::info!(
+                    "testing test {}.{}() to Actor {}",
+                    test.name,
+                    method.name,
+                    actor.name
+                );
+                return match executor.execute_message(message, ApplyKind::Explicit, 100) {
+                    Err(err) => {
+                        log::info!(
+                            "Could not test {}.{}() for Actor: {}",
+                            test.name,
+                            method.name,
+                            actor.name
+                        );
+                        log::info!("{}", err.to_string());
+                        None
+                    }
+                    Ok(apply_ret) => {
+                        log::info!(
+                            "Could test  {}.{}() for Actor: {}",
+                            test.name,
+                            method.name,
+                            actor.name
+                        );
 
-        Ok(())
+                        Some(apply_ret)
+                    }
+                };
+            })
+            .collect());
     }
 }

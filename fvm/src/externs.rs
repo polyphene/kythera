@@ -1,3 +1,6 @@
+// Copyright 2023 Polyphene.
+// SPDX-License-Identifier: Apache-2.0, MIT
+
 use anyhow::Result;
 use cid::Cid;
 use fvm::externs::{Chain, Consensus, Externs, Rand};

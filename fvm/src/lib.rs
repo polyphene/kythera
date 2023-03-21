@@ -1,3 +1,6 @@
+// Copyright 2023 Polyphene.
+// SPDX-License-Identifier: Apache-2.0, MIT
+
 pub use fvm::{account_actor, init_actor, system_actor};
 use fvm_shared::address::Address;
 use fvm_shared::ActorID;
@@ -12,8 +15,8 @@ pub mod executor {
     use fvm::executor::DefaultExecutor;
     use fvm::DefaultKernel;
 
-    pub use fvm::executor::ApplyKind;
     pub use fvm::executor::Executor;
+    pub use fvm::executor::{ApplyKind, ApplyRet};
     pub type KytheraExecutor<B, E> =
         DefaultExecutor<DefaultKernel<DefaultCallManager<KytheraMachine<B, E>>>>;
 }

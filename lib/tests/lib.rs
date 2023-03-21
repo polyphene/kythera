@@ -1,4 +1,8 @@
-use basic_test_actor::WASM_BINARY as BASIC_BINARY;
+// Copyright 2023 Polyphene.
+// SPDX-License-Identifier: Apache-2.0, MIT
+
+use fvm_shared::error::ExitCode;
+use kythera_test_actors::wasm_bin::BASIC_TEST_ACTOR_BINARY;
 
 use kythera_common::abi::{Method, ABI};
 use kythera_lib::{Tester, WasmActor};
@@ -23,7 +27,7 @@ fn test_tester() {
     let target_actor = WasmActor::new(String::from("Target"), target_wasm_bin, target_abi);
 
     // Set test actor
-    let test_wasm_bin: Vec<u8> = Vec::from(BASIC_BINARY.unwrap());
+    let test_wasm_bin: Vec<u8> = Vec::from(BASIC_TEST_ACTOR_BINARY);
     let test_abi = ABI {
         methods: vec![
             Method {
@@ -49,6 +53,25 @@ fn test_tester() {
         Err(_) => {
             panic!("Could not run test when testing Tester")
         }
-        _ => {}
+        Ok(test_res) => {
+            assert_eq!(test_res.len(), 2usize);
+
+            test_res
+                .iter()
+                .enumerate()
+                .for_each(|(i, option_apply_ret)| match option_apply_ret {
+                    Some(apply_ret) => {
+                        assert_eq!(apply_ret.msg_receipt.exit_code, ExitCode::OK);
+                        let ret_value: String =
+                            apply_ret.msg_receipt.return_data.deserialize().unwrap();
+                        if i == 0usize {
+                            assert_eq!(ret_value, String::from("TestOne"))
+                        } else {
+                            assert_eq!(ret_value, String::from("TestTwo"))
+                        }
+                    }
+                    _ => panic!("test against basic test actor should pass"),
+                })
+        }
     }
 }
