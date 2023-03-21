@@ -95,7 +95,7 @@ impl Tester {
         state_root: Cid,
         builtin_actors: Cid,
     ) -> KytheraExecutor<B, FakeExterns> {
-        let mut nc = NetworkConfig::new(NetworkVersion::V18);
+        let mut nc = NetworkConfig::new(NETWORK_VERSION);
         nc.override_actors(builtin_actors);
         nc.enable_actor_debugging();
 
