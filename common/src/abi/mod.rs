@@ -67,7 +67,7 @@ mod test {
         let method_name = String::from("test_transfer");
 
         match derive_method_num(method_name.clone()) {
-            Ok(method_num) => {
+            Ok(_) => {
                 panic!("derive_method_num success for {}", method_name);
             }
             Err(err) => {
