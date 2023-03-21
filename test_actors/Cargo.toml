@@ -1,0 +1,8 @@
+[package]
+name = "kythera_test_actors"
+description = "Kythera FVM WASM actor builder"
+version = "0.1.0"
+edition = "2021"
+license = "MIT OR Apache-2.0"
+authors = ["Polyphene"]
+publish = false

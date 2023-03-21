@@ -1,3 +1,6 @@
+// Copyright 2023 Polyphene.
+// SPDX-License-Identifier: Apache-2.0, MIT
+
 use anyhow::Result;
 use cid::Cid;
 use fvm::externs::{Chain, Consensus, Externs, Rand};
@@ -116,5 +119,11 @@ impl Consensus for FakeExterns {
         _extra: &[u8],
     ) -> Result<(Option<consensus::ConsensusFault>, i64)> {
         (self.consensus_fault)(_h1, _h2, _extra)
+    }
+}
+
+impl Default for FakeExterns {
+    fn default() -> Self {
+        Self::new()
     }
 }

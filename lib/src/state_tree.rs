@@ -7,7 +7,6 @@ use crate::{
 };
 
 use cid::{multihash::Code, Cid};
-use fil_builtin_actors_bundle::BUNDLE_CAR;
 use futures::executor::block_on;
 use fvm_ipld_blockstore::{Block, Blockstore, MemoryBlockstore};
 use fvm_ipld_car::load_car_unchecked;
@@ -18,6 +17,9 @@ use kythera_fvm::{
 };
 use libsecp256k1::{PublicKey, SecretKey};
 use rand::SeedableRng;
+
+const EAM_ACTOR_ID: ActorID = 10;
+const STATE_TREE_VERSION: StateTreeVersion = StateTreeVersion::V5;
 
 /// Built-in Actors that are deployed to the testing `StateTree`.
 pub struct BuiltInActors {
@@ -35,7 +37,7 @@ impl StateTree {
     /// Create a new Testing `StateTree`.
     pub fn new() -> Self {
         let bs = MemoryBlockstore::default();
-        let inner = kythera_fvm::state_tree::StateTree::new(bs, StateTreeVersion::V5)
+        let inner = kythera_fvm::state_tree::StateTree::new(bs, STATE_TREE_VERSION)
             .expect("Should be able to put the Version in the StateTree");
 
         Self { inner }
@@ -85,8 +87,9 @@ impl StateTree {
     pub fn load_builtin_actors(&mut self) -> BuiltInActors {
         let blockstore = self.inner.store();
         // Load the built-in Actors
-        let builtin_actors = block_on(async { load_car_unchecked(blockstore, BUNDLE_CAR).await })
-            .expect("Should be able to import built-in Actors")[0];
+        let builtin_actors =
+            block_on(async { load_car_unchecked(blockstore, actors_v10::BUNDLE_CAR).await })
+                .expect("Should be able to import built-in Actors")[0];
 
         let (version, root) = blockstore
             .get_cbor::<(u32, Cid)>(&builtin_actors)
@@ -124,16 +127,19 @@ impl StateTree {
 
         self.set_actor(
             "Eam Actor",
-            &[(); 0],
+            [(); 0],
             *manifest.get_eam_code(),
             // EAM Actor Id.
-            10 as ActorID,
+            EAM_ACTOR_ID,
             1,
             Default::default(),
         )
         .expect("Should be able to set the Eam Actor");
 
-        BuiltInActors { root, manifest }
+        BuiltInActors {
+            root: builtin_actors,
+            manifest,
+        }
     }
 
     /// Creates new accounts in the testing context
@@ -199,7 +205,7 @@ impl StateTree {
             .setting_err(&actor.name)?;
 
         // Set the Actor State on the `BlockStore`.
-        self.set_actor(&actor.name, &[(); 0], code_cid, actor_id, 0, balance)?;
+        self.set_actor(&actor.name, [(); 0], code_cid, actor_id, 0, balance)?;
 
         Ok(actor_address)
     }
