@@ -121,3 +121,9 @@ impl Consensus for FakeExterns {
         (self.consensus_fault)(_h1, _h2, _extra)
     }
 }
+
+impl Default for FakeExterns {
+    fn default() -> Self {
+        Self::new()
+    }
+}

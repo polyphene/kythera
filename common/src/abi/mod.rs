@@ -34,7 +34,6 @@ pub fn derive_method_num(name: String) -> Result<MethodNum, error::Error> {
     return match resolver.method_number(name.as_str()) {
         Ok(method_number) => Ok(method_number),
         Err(err) => {
-            println!("{}", err.to_string());
             return Err(error::Error::MethodNumberGeneration {
                 name,
                 source: err.into(),

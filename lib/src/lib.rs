@@ -142,7 +142,7 @@ impl Tester {
         Self::set_actor(
             state_tree,
             "Eam Actor",
-            &[(); 0],
+            [(); 0],
             *manifest.get_eam_code(),
             EAM_ACTOR_ID,
             1,
@@ -287,7 +287,7 @@ impl Tester {
         Self::set_actor(
             &mut self.state_tree,
             &actor.name,
-            &[(); 0],
+            [(); 0],
             code_cid,
             actor_id,
             0,
@@ -333,7 +333,7 @@ impl Tester {
         // TODO concurrent testing
         // We'll be able to use thread to do concurrent testing once we set the Engine Pool with more than
         // one possible concurrent engine.
-        return Ok(test
+        Ok(test
             .abi
             .methods
             .iter()
@@ -362,7 +362,7 @@ impl Tester {
                     method.name,
                     actor.name
                 );
-                return match executor.execute_message(message, ApplyKind::Explicit, 100) {
+                match executor.execute_message(message, ApplyKind::Explicit, 100) {
                     Err(err) => {
                         log::info!(
                             "Could not test {}.{}() for Actor: {}",
@@ -383,8 +383,14 @@ impl Tester {
 
                         Some(apply_ret)
                     }
-                };
+                }
             })
-            .collect());
+            .collect())
+    }
+}
+
+impl Default for Tester {
+    fn default() -> Self {
+        Self::new()
     }
 }
