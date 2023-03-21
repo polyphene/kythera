@@ -16,6 +16,7 @@ use fvm_shared::{
     address::Address, bigint::Zero, econ::TokenAmount, message::Message, version::NetworkVersion,
 };
 
+use crate::error::WrapFVMError;
 use error::Error;
 use state_tree::{BuiltInActors, StateTree};
 
@@ -77,7 +78,7 @@ struct DeployedActor {
 #[derive(Debug)]
 pub struct TestResults {
     pub test_actor: WasmActor,
-    pub results: Result<Vec<Option<ApplyRet>>, Error>,
+    pub results: Result<Vec<Result<ApplyRet, Error>>, Error>,
 }
 
 impl Tester {
@@ -206,28 +207,10 @@ impl Tester {
                                 method.name,
                                 target.name
                             );
-                            match executor.execute_message(message, ApplyKind::Explicit, 100) {
-                                Err(err) => {
-                                    log::info!(
-                                        "Error while testing {}.{}() for Actor: {}",
-                                        test_actor.name,
-                                        method.name,
-                                        target.name
-                                    );
-                                    log::info!("{}", err.to_string());
-                                    None
-                                }
-                                Ok(apply_ret) => {
-                                    log::info!(
-                                        "Could test  {}.{}() for Actor: {}",
-                                        test_actor.name,
-                                        method.name,
-                                        target.name
-                                    );
-
-                                    Some(apply_ret)
-                                }
-                            }
+                            let apply_ret = executor
+                                .execute_message(message, ApplyKind::Explicit, 100)
+                                .tester_err("Couldn't execute message")?;
+                            Ok(apply_ret)
                         })
                         .collect()),
                 }
@@ -381,7 +364,7 @@ mod tests {
                     .iter()
                     .enumerate()
                     .for_each(|(i, option_apply_ret)| match option_apply_ret {
-                        Some(apply_ret) => {
+                        Ok(apply_ret) => {
                             assert_eq!(apply_ret.msg_receipt.exit_code, ExitCode::OK);
                             let ret_value: String =
                                 apply_ret.msg_receipt.return_data.deserialize().unwrap();
