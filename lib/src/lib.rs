@@ -127,11 +127,14 @@ impl Tester {
     }
 
     /// Deploy the target Actor file into the `StateTree`.
-    pub fn deploy_target_actor(&mut self, name: String, actor: WasmActor) -> Result<(), Error> {
+    pub fn deploy_target_actor(&mut self, actor: WasmActor) -> Result<(), Error> {
         let address = self
             .state_tree
             .deploy_actor_from_bin(&actor, TokenAmount::zero())?;
-        self.target_actor = Some(DeployedActor { name, address });
+        self.target_actor = Some(DeployedActor {
+            name: actor.name,
+            address,
+        });
 
         Ok(())
     }
