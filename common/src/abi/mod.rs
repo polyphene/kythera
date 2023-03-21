@@ -31,15 +31,13 @@ pub struct Method {
 pub fn derive_method_num(name: &str) -> Result<MethodNum, error::Error> {
     let resolver = MethodResolver::new(Blake2bHasher {});
 
-    return match resolver.method_number(name) {
+    match resolver.method_number(name) {
         Ok(method_number) => Ok(method_number),
-        Err(err) => {
-            return Err(error::Error::MethodNumberGeneration {
-                name: name.into(),
-                source: err.into(),
-            });
-        }
-    };
+        Err(err) => Err(error::Error::MethodNumberGeneration {
+            name: name.into(),
+            source: err.into(),
+        }),
+    }
 }
 
 #[cfg(test)]
