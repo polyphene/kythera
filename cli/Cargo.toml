@@ -1,8 +1,15 @@
 [package]
-name = "cli"
-version = "0.1.0-alpha.1"
+name = "kythera"
+version = "0.1.0-alpha.2"
 edition = "2021"
 license = "MIT OR Apache-2.0"
+authors = ["Polyphene <contact@polyphene.io>"]
+description = """Kythera is a Toolset for Filecoin Virtual Machine Native Actor development, testing and deployment.
+For more information, check out the official documentation at https://polyphene.github.io/kythera/ ."""
+documentation = "https://polyphene.github.io/kythera/"
+repository = "https://github.com/polyphene/kythera"
+keywords = ["kythera", "cli", "filecoin", "fvm", "wasm"]
+categories = ["command-line-utilities"]
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
