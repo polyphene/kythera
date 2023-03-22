@@ -12,7 +12,7 @@ use anyhow::Context;
 use kythera_lib::{Abi, WasmActor};
 use walkdir::WalkDir;
 
-/// a test structure composed by the main Actor and its multiple tests.
+/// A test structure composed by the target Actor and its multiple tests.
 pub struct Test {
     pub actor: WasmActor,
     pub tests: Vec<WasmActor>,
@@ -34,51 +34,53 @@ fn read_actor<P: AsRef<Path>>(path: P) -> anyhow::Result<WasmActor> {
         .expect("Actor file name should be valid")
         .to_string_lossy()
         .into_owned();
+    // TODO: search for tests ABI.
     Ok(WasmActor::new(file_name, bytecode, Abi { methods: vec![] }))
 }
 
-/// Gather the main Actor file and its test files.
+/// Gather the target Actor file and its test files.
 /// The rules for reading Actor files and it's matching tests are:
 /// - All .wasm files that are at the root of the kythera input dir are actors.
 /// - All .t.wasm files that are at the root of the kythera wasm dir are test actors.
 /// - All .wasm files that are in .t dirs are test actors.
 pub fn search_files<P: AsRef<Path>>(path: P) -> anyhow::Result<Vec<Test>> {
-    // Search the root dir and find all the .wasm files there which may be main actors
+    // Search the root dir and find all the .wasm files there which may be target actors
     // or its matching test dirs and files.
-    // Split into two lists, the first being the main Actors and the second
+    // Split into two lists, the first being the target Actors and the second
     // their matching test files and dirs.
-    let (main_actor_paths, mut root): (Vec<String>, Vec<String>) = fs::read_dir(path)
-        .context("Could not read the input path")?
-        .into_iter()
-        .filter_map(Result::ok)
-        // Path::ends_with is diferent from String::ends_with,
-        // Path::ends_with operates on the child, in this case
-        // we don't know the name of the file so we can't operate on the child.
-        .filter_map(|e| e.path().into_os_string().into_string().ok())
-        .filter(|path| path.ends_with(".wasm") || path.ends_with(".t"))
-        .partition(|path| path.ends_with(".wasm") && !path.ends_with(".t.wasm"));
+    let (target_actor_paths, mut test_artifacts_paths): (Vec<String>, Vec<String>) =
+        fs::read_dir(path)
+            .context("Could not read the input path")?
+            .into_iter()
+            .filter_map(Result::ok)
+            // Path::ends_with is diferent from String::ends_with,
+            // Path::ends_with operates on the child, in this case
+            // we don't know the name of the file so we can't operate on the child.
+            .filter_map(|e| e.path().into_os_string().into_string().ok())
+            .filter(|path| path.ends_with(".wasm") || path.ends_with(".t"))
+            .partition(|path| path.ends_with(".wasm") && !path.ends_with(".t.wasm"));
 
     let mut tests = vec![];
-    for main_actor_path in main_actor_paths {
-        let Ok(main_actor) = read_actor(&main_actor_path) else {
-            log::error!("Could not read test file {main_actor_path}");
+    for target_actor_path in target_actor_paths {
+        let Ok(main_actor) = read_actor(&target_actor_path) else {
+            log::error!("Could not read target Actor file {target_actor_path}");
             continue;
         };
         let mut actor_tests = vec![];
 
         // iterate the remaining root entries looking for test files and dirs
         // if the entry is a matching test we remove it from the root list.
-        // and add it to our main Actor tests.
-        root.retain(|test_path| {
+        // and add it to our target Actor tests.
+        test_artifacts_paths.retain(|test_path| {
             let test_path = Path::new(test_path);
             let test_path_stem = test_path
                 .file_stem()
                 .and_then(OsStr::to_str)
                 .expect("Test path file stem should be valid UTF-8");
-            let main_actor_stem = Path::new(&main_actor_path)
+            let main_actor_stem = Path::new(&target_actor_path)
                 .file_stem()
                 .and_then(OsStr::to_str)
-                .expect("Main Actor file stem should be valid UTF-8");
+                .expect("Target Actor file stem should be valid UTF-8");
 
             if !test_path_stem.starts_with(main_actor_stem) {
                 return true;
@@ -86,7 +88,7 @@ pub fn search_files<P: AsRef<Path>>(path: P) -> anyhow::Result<Vec<Test>> {
 
             if test_path.is_file() {
                 let Ok(test) = read_actor(test_path) else {
-                        log::error!("Could not read test file {main_actor_path}");
+                        log::error!("Could not read test file {}", test_path.display());
                         return false;
                 };
                 actor_tests.push(test);
@@ -118,7 +120,7 @@ pub fn search_files<P: AsRef<Path>>(path: P) -> anyhow::Result<Vec<Test>> {
 
     // If there were left out files in the root, it is tests
     // without a prent main Actor.
-    for left in root {
+    for left in test_artifacts_paths {
         log::warn!("Test {left} not read, it is missing its Actor");
     }
 

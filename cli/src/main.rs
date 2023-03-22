@@ -7,7 +7,6 @@ use clap::{Args, Parser};
 use kythera_lib::Tester;
 
 mod search;
-mod test;
 
 /// Kythera, a Toolset for Filecoin Virtual Machine Native Actor development, testing and deployment.
 #[derive(Parser, Debug)]
