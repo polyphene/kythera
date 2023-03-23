@@ -1,6 +1,6 @@
 [package]
-name = "cli"
-version = "0.1.0-alpha.1"
+name = "kythera"
+version = "0.1.0-alpha.2"
 edition = "2021"
 license = "MIT OR Apache-2.0"
 authors = ["Polyphene <contact@polyphene.io>"]
