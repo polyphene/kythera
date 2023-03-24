@@ -1,0 +1,57 @@
+name: Publishing of Kythera crates
+
+on:
+  workflow_run:
+    workflows: ["Continuous integration"]
+  merge_group:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
+  push:
+    branches:
+      - main
+
+jobs:
+  # Job to filter crates to be published
+  gather_crates:
+    runs-on: ubuntu-latest
+    permissions:
+      pull-requests: read
+    outputs:
+      crates: ${{ steps.filter.outputs.changes }}
+    steps:
+      - uses: actions/checkout@v3
+      - uses: dorny/paths-filter@v2
+        id: filter
+        with:
+          filters: |
+            kythera: cli/Cargo.toml
+
+  publish:
+    name: Publish ${{ matrix.crate }}
+    runs-on: ubuntu-latest
+    needs:
+      - gather_crates
+    if: ${{ needs.gather_crates.outputs.crates != '[]' && needs.gather_crates.outputs.crates != '' }}
+    strategy:
+      fail-fast: false
+      matrix:
+        crate: ${{ fromJSON(needs.gather_crates.outputs.crates) }}
+    steps:
+      - uses: actions/checkout@v3
+
+      - name: Check if we compile without any features activated
+        run: cargo --locked build --package ${{ matrix.crate }} --no-default-features
+
+      # Publication dry-run flow should run on pull request on the `main` branch
+      - name: Dry publish
+        run: cargo publish -p ${{ matrix.crate }} --dry-run
+        if: ${{ github.event_name == 'pull_request' }}
+
+      # Publication flow should run on merge on the `main` branch
+      - name: Publish
+        run: cargo publish -p ${{ matrix.crate }} --token ${{secrets.CARGO_TOKEN}}
+        if: ${{ github.event_name == 'push' }}
+
