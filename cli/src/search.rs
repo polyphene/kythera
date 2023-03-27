@@ -52,7 +52,7 @@ pub fn search_files<P: AsRef<Path>>(path: P) -> anyhow::Result<Vec<Test>> {
             .context("Could not read the input path")?
             .into_iter()
             .filter_map(Result::ok)
-            // Path::ends_with is diferent from String::ends_with,
+            // Path::ends_with is different from String::ends_with,
             // Path::ends_with operates on the child, in this case
             // we don't know the name of the file so we can't operate on the child.
             .filter_map(|e| e.path().into_os_string().into_string().ok())
@@ -124,7 +124,7 @@ pub fn search_files<P: AsRef<Path>>(path: P) -> anyhow::Result<Vec<Test>> {
     }
 
     // If there were left out files in the root, it is tests
-    // without a prent main Actor.
+    // without a parent target Actor.
     for left in test_artifacts_paths {
         log::warn!("Test {left} not read, it is missing its Actor");
     }
