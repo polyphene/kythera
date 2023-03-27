@@ -2545,7 +2545,7 @@ dependencies = [
 ]
 
 [[package]]
-name = "kythera"
+name = "kythera-cli"
 version = "0.1.0-alpha.2"
 dependencies = [
  "anyhow",
