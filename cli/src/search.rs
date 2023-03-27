@@ -59,7 +59,12 @@ pub fn search_files<P: AsRef<Path>>(path: P) -> anyhow::Result<Vec<Test>> {
             .filter(|path| path.ends_with(".wasm") || path.ends_with(".t"))
             // Warn if not in Pascal case.
             .inspect(|path| {
-                if pascal_case_split(path).is_empty() {
+                let filename = Path::new(path)
+                    .file_name()
+                    .and_then(OsStr::to_str)
+                    .filter(|f| !pascal_case_split(f).is_empty());
+
+                if filename.is_none() {
                     log::warn!("file {path} is not in PascalCase");
                 }
             })
