@@ -9,7 +9,7 @@ use std::{
 };
 
 use anyhow::Context;
-use kythera_lib::{Abi, WasmActor};
+use kythera_lib::{pascal_case_split, Abi, WasmActor};
 use walkdir::WalkDir;
 
 /// A test structure composed by the target Actor and its multiple tests.
@@ -57,6 +57,12 @@ pub fn search_files<P: AsRef<Path>>(path: P) -> anyhow::Result<Vec<Test>> {
             // we don't know the name of the file so we can't operate on the child.
             .filter_map(|e| e.path().into_os_string().into_string().ok())
             .filter(|path| path.ends_with(".wasm") || path.ends_with(".t"))
+            // Warn if not in Pascal case.
+            .inspect(|path| {
+                if pascal_case_split(path).is_empty() {
+                    log::warn!("file {path} is not in PascalCase");
+                }
+            })
             .partition(|path| path.ends_with(".wasm") && !path.ends_with(".t.wasm"));
 
     let mut tests = vec![];

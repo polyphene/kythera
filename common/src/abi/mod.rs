@@ -9,6 +9,32 @@ use crate::error;
 
 mod blake2b;
 
+/// Split a Pascal case string into a vector of its components.
+pub fn pascal_case_split(s: &str) -> Vec<&str> {
+    let mut split = vec![];
+    // Work with indices to avoid allocations.
+    let mut chars = s.char_indices();
+
+    // Check if first character is capitalized.
+    let mut beg = match chars.next() {
+        Some((i, c)) if c.is_uppercase() => i,
+        _ => return split,
+    };
+
+    // Iterate the rest of the characters.
+    for (i, c) in chars {
+        if c.is_uppercase() || c.is_numeric() {
+            split.push(&s[beg..i]);
+            beg = i;
+        }
+    }
+
+    // Push the last word, this word is not covered by the iterator
+    // as it doesn't know when it's last element.
+    split.push(&s[beg..s.len()]);
+    split
+}
+
 /// `Abi` is the structure we use internally to deal with Actor Binary Interface. It contains all
 /// exposed [`Method`] from a given actor.
 #[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord)]
@@ -42,7 +68,7 @@ pub fn derive_method_num(name: &str) -> Result<MethodNum, error::Error> {
 
 #[cfg(test)]
 mod test {
-    use crate::abi::derive_method_num;
+    use super::{derive_method_num, pascal_case_split};
 
     #[test]
     fn test_method_derivation() {
@@ -74,5 +100,16 @@ mod test {
                 )
             }
         }
+    }
+
+    #[test]
+    fn test_pascal_case() {
+        assert_eq!(pascal_case_split("TestOne"), vec!["Test", "One"]);
+        assert_eq!(
+            pascal_case_split("TestFailWithMultipleWords"),
+            vec!["Test", "Fail", "With", "Multiple", "Words"]
+        );
+        assert_eq!(pascal_case_split("Test1"), vec!["Test", "1"]);
+        assert_eq!(pascal_case_split("testOne"), Vec::<&str>::new());
     }
 }
