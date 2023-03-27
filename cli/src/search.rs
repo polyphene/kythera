@@ -34,7 +34,6 @@ fn read_actor<P: AsRef<Path>>(path: P) -> anyhow::Result<WasmActor> {
         .expect("Actor file name should be valid")
         .to_string_lossy()
         .into_owned();
-    // TODO: search for tests ABI.
     Ok(WasmActor::new(file_name, bytecode, Abi { methods: vec![] }))
 }
 
