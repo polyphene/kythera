@@ -3,6 +3,8 @@
 
 use anyhow::Result;
 use frc42_dispatch::hash::MethodResolver;
+use fvm_ipld_encoding::tuple::{Deserialize_tuple, Serialize_tuple};
+use serde::de::SeqAccess;
 
 use crate::abi::blake2b::Blake2bHasher;
 use crate::error;
@@ -37,7 +39,8 @@ pub fn pascal_case_split(s: &str) -> Vec<&str> {
 
 /// `Abi` is the structure we use internally to deal with Actor Binary Interface. It contains all
 /// exposed [`Method`] from a given actor.
-#[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord)]
+#[derive(Serialize_tuple, Deserialize_tuple, Clone, Debug, PartialEq, Eq, PartialOrd, Ord)]
+#[serde(crate = "fvm_ipld_encoding::serde")]
 pub struct Abi {
     pub methods: Vec<Method>,
 }
@@ -46,10 +49,52 @@ pub struct Abi {
 pub type MethodNum = u64;
 
 /// `Methods` describes an exposed method from an actor entrypoint.
-#[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord)]
+#[derive(Serialize_tuple, Clone, Debug, PartialEq, Eq, PartialOrd, Ord)]
+#[serde(crate = "fvm_ipld_encoding::serde")]
 pub struct Method {
+    #[serde(skip_serializing)]
     pub number: MethodNum,
     pub name: String,
+}
+
+impl<'de> fvm_ipld_encoding::de::Deserialize<'de> for Method {
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+    where
+        D: fvm_ipld_encoding::de::Deserializer<'de>,
+    {
+        struct MethodVisitor;
+
+        impl<'de> fvm_ipld_encoding::de::Visitor<'de> for MethodVisitor {
+            type Value = Method;
+
+            fn expecting(&self, formatter: &mut std::fmt::Formatter) -> std::fmt::Result {
+                formatter.write_str("Method")
+            }
+
+            fn visit_seq<A>(self, mut seq: A) -> std::result::Result<Self::Value, A::Error>
+            where
+                A: SeqAccess<'de>,
+            {
+                let name = seq
+                    .next_element::<String>()?
+                    .ok_or_else(|| fvm_ipld_encoding::de::Error::invalid_length(0, &self))?;
+
+                let number = match derive_method_num(&name) {
+                    Ok(number) => number,
+                    Err(_) => {
+                        return Err(fvm_ipld_encoding::de::Error::custom(format_args!(
+                            "Could not derive method number for: {}",
+                            &name
+                        )))
+                    }
+                };
+
+                Ok(Self::Value { number, name })
+            }
+        }
+
+        deserializer.deserialize_seq(MethodVisitor)
+    }
 }
 
 /// `derive_method_num` will return the method number for a given method name based on the FRC-042:
@@ -69,6 +114,7 @@ pub fn derive_method_num(name: &str) -> Result<MethodNum, error::Error> {
 #[cfg(test)]
 mod test {
     use super::{derive_method_num, pascal_case_split};
+    use crate::abi::{Abi, Method};
 
     #[test]
     fn test_method_derivation() {
@@ -111,5 +157,76 @@ mod test {
         );
         assert_eq!(pascal_case_split("Test1"), vec!["Test", "1"]);
         assert_eq!(pascal_case_split("testOne"), Vec::<&str>::new());
+    }
+
+    #[test]
+    fn test_tuple_serde() {
+        // Test assets
+        let test_transfer_name = String::from("TestTransfer");
+        let test_transfer_fail_name = String::from("TestFailTransfer");
+
+        let abi = Abi {
+            methods: vec![
+                Method {
+                    number: derive_method_num(&test_transfer_name).unwrap(),
+                    name: test_transfer_name,
+                },
+                Method {
+                    number: derive_method_num(&test_transfer_fail_name).unwrap(),
+                    name: test_transfer_fail_name,
+                },
+            ],
+        };
+        let serialized_abi: Vec<u8> = vec![
+            129, 130, 129, 108, 84, 101, 115, 116, 84, 114, 97, 110, 115, 102, 101, 114, 129, 112,
+            84, 101, 115, 116, 70, 97, 105, 108, 84, 114, 97, 110, 115, 102, 101, 114,
+        ];
+
+        // Serialize
+        let abi_vec = fvm_ipld_encoding::to_vec(&abi).unwrap();
+        assert_eq!(abi_vec, serialized_abi);
+
+        // Deserialize
+        let deserialized_abi: Abi = fvm_ipld_encoding::from_slice(&serialized_abi).unwrap();
+        assert_eq!(deserialized_abi, abi);
+    }
+
+    #[test]
+    fn test_fail_tuple_serde() {
+        // Test assets
+        let test_transfer_name = String::from("TestTransfer");
+        let test_transfer_fail_name = String::from("testFailTransfer");
+
+        let abi = Abi {
+            methods: vec![
+                Method {
+                    number: derive_method_num(&test_transfer_name).unwrap(),
+                    name: test_transfer_name,
+                },
+                Method {
+                    number: 3280706483,
+                    name: test_transfer_fail_name,
+                },
+            ],
+        };
+
+        let serialized_abi: Vec<u8> = vec![
+            129, 130, 129, 108, 84, 101, 115, 116, 84, 114, 97, 110, 115, 102, 101, 114, 129, 112,
+            116, 101, 115, 116, 70, 97, 105, 108, 84, 114, 97, 110, 115, 102, 101, 114,
+        ];
+
+        // Serialize
+        let abi_vec = fvm_ipld_encoding::to_vec(&abi).unwrap();
+        assert_eq!(abi_vec, serialized_abi);
+
+        // Deserialize
+        match fvm_ipld_encoding::from_slice::<Abi>(&serialized_abi) {
+            Ok(_) => panic!("Deserialization should fail"),
+            Err(err) => {
+                assert!(err
+                    .to_string()
+                    .contains("Could not derive method number for: testFailTransfer"));
+            }
+        };
     }
 }

@@ -2564,6 +2564,9 @@ dependencies = [
  "anyhow",
  "blake2b_simd",
  "frc42_dispatch",
+ "fvm_ipld_encoding 0.3.3 (git+https://github.com/filecoin-project/ref-fvm.git)",
+ "serde",
+ "serde_tuple",
  "thiserror",
 ]
 
