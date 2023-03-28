@@ -11,7 +11,8 @@ use crate::error;
 
 mod blake2b;
 
-/// Split a Pascal case string into a vector of its components.
+/// Split a PascalCase string into a vector of its components.
+/// If the string is not PascalCase function returns an empty [`Vec`].
 pub fn pascal_case_split(s: &str) -> Vec<&str> {
     let mut split = vec![];
     // Work with indices to avoid allocations.
