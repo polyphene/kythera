@@ -5,7 +5,7 @@ use anyhow::Result;
 use frc42_dispatch::hash::MethodResolver;
 
 use crate::abi::blake2b::Blake2bHasher;
-use crate::error;
+use crate::error::{self, Error};
 
 mod blake2b;
 
@@ -37,20 +37,69 @@ pub fn pascal_case_split(s: &str) -> Vec<&str> {
 }
 
 /// `Abi` is the structure we use internally to deal with Actor Binary Interface. It contains all
-/// exposed [`Method`] from a given actor.
+/// exposed [`Method`] from a given Actor.
 #[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord)]
 pub struct Abi {
     pub methods: Vec<Method>,
 }
 
-/// Method number indicator for calling actor methods.
+/// Method number indicator for calling Actor methods.
 pub type MethodNum = u64;
 
-/// `Methods` describes an exposed method from an actor entrypoint.
+/// Type of the [`Abi`] [`Method`] of the test Actor.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord)]
+pub enum MethodType {
+    Constructor,
+    SetUp,
+    Test,
+    TestFail,
+}
+
+/// `Methods` describes an exposed method from an Actor entrypoint.
 #[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord)]
 pub struct Method {
-    pub number: MethodNum,
-    pub name: String,
+    number: MethodNum,
+    name: String,
+    r#type: MethodType,
+}
+
+impl Method {
+    /// Get the [`Method`] number.
+    pub fn number(&self) -> MethodNum {
+        self.number
+    }
+
+    /// Get the [`Method`] number.
+    pub fn name(&self) -> &str {
+        &self.name
+    }
+
+    /// Get the [`Method`] type.
+    pub fn r#type(&self) -> MethodType {
+        self.r#type
+    }
+}
+
+impl Method {
+    pub fn new_from_name(name: &str) -> Result<Self, Error> {
+        let number = derive_method_num(name)?;
+        let name = name.to_string();
+
+        let split = pascal_case_split(&name);
+        let r#type = match &split[..] {
+            ["Constructor", ..] => MethodType::Constructor,
+            ["Set", "Up", ..] => MethodType::SetUp,
+            ["Test", "Fail", ..] => MethodType::TestFail,
+            ["Test", ..] => MethodType::Test,
+            _ => return Err(Error::InvalidMethodName(name)),
+        };
+
+        Ok(Method {
+            number,
+            name,
+            r#type,
+        })
+    }
 }
 
 /// `derive_method_num` will return the method number for a given method name based on the FRC-042:
@@ -60,7 +109,7 @@ pub fn derive_method_num(name: &str) -> Result<MethodNum, error::Error> {
 
     match resolver.method_number(name) {
         Ok(method_number) => Ok(method_number),
-        Err(err) => Err(error::Error::MethodNumberGeneration {
+        Err(err) => Err(Error::MethodNumberGeneration {
             name: name.into(),
             source: err.into(),
         }),
@@ -69,6 +118,8 @@ pub fn derive_method_num(name: &str) -> Result<MethodNum, error::Error> {
 
 #[cfg(test)]
 mod test {
+    use crate::abi::{Method, MethodType};
+
     use super::{derive_method_num, pascal_case_split};
 
     #[test]
@@ -112,5 +163,28 @@ mod test {
         );
         assert_eq!(pascal_case_split("Test1"), vec!["Test", "1"]);
         assert_eq!(pascal_case_split("testOne"), Vec::<&str>::new());
+    }
+
+    #[test]
+    fn test_method_constructor() {
+        assert_eq!(
+            Method::new_from_name("TestOne").unwrap().r#type,
+            MethodType::Test
+        );
+        assert_eq!(
+            Method::new_from_name("TestFailOne").unwrap().r#type,
+            MethodType::TestFail
+        );
+        assert_eq!(
+            Method::new_from_name("Constructor").unwrap().r#type,
+            MethodType::Constructor
+        );
+        assert_eq!(
+            Method::new_from_name("SetUp").unwrap().r#type,
+            MethodType::SetUp
+        );
+
+        assert!(Method::new_from_name("testOne").is_err());
+        assert!(Method::new_from_name("").is_err());
     }
 }

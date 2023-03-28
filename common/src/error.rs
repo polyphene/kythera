@@ -4,6 +4,8 @@
 /// Kythera common errors.
 #[derive(Debug, thiserror::Error)]
 pub enum Error {
+    #[error("Method name `{0}` is invalid")]
+    InvalidMethodName(String),
     #[error("Could not generate method number for `{name}`")]
     MethodNumberGeneration {
         name: String,
