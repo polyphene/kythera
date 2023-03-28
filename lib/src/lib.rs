@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0, MIT
 use cid::Cid;
 
-use kythera_common::abi::Abi;
+pub use kythera_common::abi::{pascal_case_split, Abi};
 use kythera_fvm::{
     engine::EnginePool,
     executor::{ApplyKind, ApplyRet, Executor, KytheraExecutor},
@@ -48,6 +48,7 @@ pub struct WasmActor {
 
 impl WasmActor {
     /// Create a new WebAssembly Actor.
+    // TODO: parse the Abi methods from the bytecode instead of receiving it via constructor.
     pub fn new(name: String, bytecode: Vec<u8>, abi: Abi) -> Self {
         Self {
             name,
@@ -342,9 +343,9 @@ mod tests {
                 },
             ],
         };
-        let test_actor = WasmActor::new(String::from("Test"), test_wasm_bin, test_abi);
+        let test_actor = WasmActor::new(String::from("Basic"), test_wasm_bin, test_abi);
 
-        match tester.deploy_target_actor(target_actor.clone()) {
+        match tester.deploy_target_actor(target_actor) {
             Err(_) => {
                 panic!("Could not set target Actor when testing Tester")
             }
