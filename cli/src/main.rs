@@ -1,43 +1,49 @@
-// Copyright 2023 Polyphene.
-// SPDX-License-Identifier: Apache-2.0, MIT
+mod commands;
+mod utils;
 
-use std::path::PathBuf;
+use commands::test;
+use commands::tmp;
 
-use clap::{Args, Parser};
-use kythera_lib::Tester;
+use utils::context::CliContext;
 
-mod search;
+use clap::{Parser, Subcommand};
 
-/// Kythera, a Toolset for Filecoin Virtual Machine Native Actor development, testing and deployment.
-#[derive(Parser, Debug)]
-#[command(version)]
-enum MainArgs {
+#[derive(Parser)]
+#[command(name = "Kythera")]
+#[command(bin_name = "kythera")]
+#[command(author = "Polyphene")]
+#[command(about = "Kythera is a Toolset for Filecoin Virtual Machine Native Actor development, testing and deployment.")]
+#[command(version)] // Read from `Cargo.toml`
+struct Cli {
+    #[command(subcommand)]
+    command: Option<Commands>,
+}
+
+#[derive(Subcommand)]
+enum Commands {
     #[clap(visible_alias = "t")]
-    Test(TestArgs),
+    Test(test::TestArgs),
+    /// does temporary testing things
+    Tmp {
+        #[command(subcommand)]
+        command: Option<tmp::TmpSubCommands>,
+    },
 }
 
-/// Run an Actor tests.
-#[derive(Args, Debug)]
-struct TestArgs {
-    /// Actor files dir.
-    path: PathBuf,
-}
-
-/// Test
-fn test(args: TestArgs) -> anyhow::Result<()> {
-    let tests = search::search_files(&args.path)?;
-    for test in tests {
-        let mut tester = Tester::new();
-        tester.deploy_target_actor(test.actor)?;
-        tester.test(&test.tests)?;
-    }
-    Ok(())
-}
 fn main() -> anyhow::Result<()> {
-    let args = MainArgs::parse();
-    match args {
-        MainArgs::Test(args) => test(args)?,
-    };
-
+    let cli = Cli::parse();
+    match &cli.command {
+        Some(Commands::Test(args)) => test:: test(args)?,
+        Some(Commands::Tmp { command: sub_command }) => {
+            match &sub_command {
+                Some(tmp::TmpSubCommands::PrintConfig {}) => {
+                    let context = CliContext::new()?;
+                    tmp::print_config()?
+                }
+                None => {}
+            };
+        }
+        None => {}
+    }
     Ok(())
 }
