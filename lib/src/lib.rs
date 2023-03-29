@@ -6,6 +6,7 @@ pub use kythera_common::{
     abi::{pascal_case_split, Abi, Method},
     from_slice, to_vec,
 };
+
 use kythera_fvm::{
     engine::EnginePool,
     executor::{ApplyKind, ApplyRet, Executor, KytheraExecutor},
@@ -51,6 +52,7 @@ pub struct WasmActor {
 
 impl WasmActor {
     /// Create a new WebAssembly Actor.
+    // TODO: parse the Abi methods from the bytecode instead of receiving it via constructor.
     pub fn new(name: String, bytecode: Vec<u8>, abi: Abi) -> Self {
         Self {
             name,
