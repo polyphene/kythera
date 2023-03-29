@@ -184,11 +184,11 @@ mod test {
         ];
 
         // Serialize
-        let abi_vec = fvm_ipld_encoding::to_vec(&abi).unwrap();
+        let abi_vec = crate::to_vec(&abi).unwrap();
         assert_eq!(abi_vec, serialized_abi);
 
         // Deserialize
-        let deserialized_abi: Abi = fvm_ipld_encoding::from_slice(&serialized_abi).unwrap();
+        let deserialized_abi: Abi = crate::from_slice(&serialized_abi).unwrap();
         assert_eq!(deserialized_abi, abi);
     }
 
@@ -217,11 +217,11 @@ mod test {
         ];
 
         // Serialize
-        let abi_vec = fvm_ipld_encoding::to_vec(&abi).unwrap();
+        let abi_vec = crate::to_vec(&abi).unwrap();
         assert_eq!(abi_vec, serialized_abi);
 
         // Deserialize
-        match fvm_ipld_encoding::from_slice::<Abi>(&serialized_abi) {
+        match crate::from_slice::<Abi>(&serialized_abi) {
             Ok(_) => panic!("Deserialization should fail"),
             Err(err) => {
                 assert!(err

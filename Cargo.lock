@@ -2553,6 +2553,7 @@ dependencies = [
  "kythera-lib",
  "log",
  "tempfile",
+ "thiserror",
  "walkdir",
  "wat",
 ]
