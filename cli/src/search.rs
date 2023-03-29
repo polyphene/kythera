@@ -49,7 +49,7 @@ fn derive_abi_path<P: AsRef<Path>>(path: P) -> anyhow::Result<String> {
     Ok(path_buf
         .into_os_string()
         .into_string()
-        .or_else(|_| Err(crate::error::Error::FailedConversion))?)
+        .map_err(|_| crate::error::Error::FailedConversion)?)
 }
 
 /// Create a WebAssembly actor from a binary and an Abi
@@ -81,9 +81,7 @@ pub fn search_files<P: AsRef<Path>>(path: P) -> anyhow::Result<Vec<Test>> {
             // Path::ends_with operates on the child, in this case
             // we don't know the name of the file so we can't operate on the child.
             .filter_map(|e| e.path().into_os_string().into_string().ok())
-            .filter(|path| {
-                return path.ends_with(".wasm") || path.ends_with(".t");
-            })
+            .filter(|path| path.ends_with(".wasm") || path.ends_with(".t"))
             // Warn if not in Pascal case.
             .inspect(|path| {
                 let filename = Path::new(path)
@@ -319,6 +317,7 @@ mod tests {
     fn actor_with_sub_test_dirs() {
         let dir = tempdir().unwrap();
         let dir_path = dir.path();
+
         let target_actor_abi = Abi {
             methods: vec![
                 Method {
@@ -382,7 +381,7 @@ mod tests {
 
         // Setup test 2 assets
         set_actors_in_dir(
-            subdir_path.as_path(),
+            subsubdir_path.as_path(),
             vec![
                 ("test2.1", &test_2_1_actor_abi),
                 ("test2.2", &test_2_2_actor_abi),
