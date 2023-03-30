@@ -372,7 +372,7 @@ mod tests {
         let subdir_path = dir_path.join("token.t");
         fs::create_dir(&subdir_path).unwrap();
 
-        // Setup test 1 assets
+        // Setup test 1 assets.
         set_actors_in_dir(subdir_path.as_path(), vec![("test1", &test_1_actor_abi)]);
 
         let subsubdir_path = subdir_path.join("test2");
