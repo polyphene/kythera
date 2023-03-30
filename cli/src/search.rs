@@ -51,7 +51,7 @@ fn derive_abi_path<P: AsRef<Path>>(path: P) -> anyhow::Result<String> {
         .map_err(|_| crate::error::Error::FailedConversion)?)
 }
 
-/// Create a WebAssembly actor from a binary and an Abi
+/// Create a WebAssembly actor from a binary and an Abi.
 fn create_actor<P: AsRef<Path>>(binary_path: P) -> anyhow::Result<WasmActor> {
     let abi_path = derive_abi_path(&binary_path)?;
 
