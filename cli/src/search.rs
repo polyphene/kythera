@@ -41,8 +41,8 @@ fn read_file_data<P: AsRef<Path>>(path: P) -> anyhow::Result<(String, Vec<u8>)> 
     Ok((file_name, content))
 }
 
-/// Change extension of a given path with .cbor
-fn derive_abi_path<P: AsRef<Path>>(path: P) -> anyhow::Result<String> {
+/// Set the extension of a given path to .cbor
+fn set_abi_extension<P: AsRef<Path>>(path: P) -> anyhow::Result<String> {
     let mut path_buf = PathBuf::from(path.as_ref());
     path_buf.set_extension("cbor");
     Ok(path_buf
