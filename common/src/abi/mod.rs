@@ -41,7 +41,6 @@ pub fn pascal_case_split(s: &str) -> Vec<&str> {
 /// `Abi` is the structure we use internally to deal with Actor Binary Interface. It contains all
 /// exposed [`Method`] from a given actor.
 #[derive(Serialize_tuple, Deserialize_tuple, Clone, Debug, PartialEq, Eq, PartialOrd, Ord)]
-#[serde(crate = "fvm_ipld_encoding::serde")]
 pub struct Abi {
     pub methods: Vec<Method>,
 }
@@ -51,21 +50,22 @@ pub type MethodNum = u64;
 
 /// `Methods` describes an exposed method from an actor entrypoint.
 #[derive(Serialize_tuple, Clone, Debug, PartialEq, Eq, PartialOrd, Ord)]
-#[serde(crate = "fvm_ipld_encoding::serde")]
 pub struct Method {
     #[serde(skip_serializing)]
     pub number: MethodNum,
     pub name: String,
 }
 
-impl<'de> fvm_ipld_encoding::de::Deserialize<'de> for Method {
+// Implement custom deserialization method for [`Method`] as we expect the bytes to be deserialized to only contain
+// the `name` and not the `number` property that is generated at deserialization time.
+impl<'de> serde::de::Deserialize<'de> for Method {
     fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
     where
-        D: fvm_ipld_encoding::de::Deserializer<'de>,
+        D: serde::de::Deserializer<'de>,
     {
         struct MethodVisitor;
 
-        impl<'de> fvm_ipld_encoding::de::Visitor<'de> for MethodVisitor {
+        impl<'de> serde::de::Visitor<'de> for MethodVisitor {
             type Value = Method;
 
             fn expecting(&self, formatter: &mut std::fmt::Formatter) -> std::fmt::Result {
@@ -78,12 +78,12 @@ impl<'de> fvm_ipld_encoding::de::Deserialize<'de> for Method {
             {
                 let name = seq
                     .next_element::<String>()?
-                    .ok_or_else(|| fvm_ipld_encoding::de::Error::invalid_length(0, &self))?;
+                    .ok_or_else(|| serde::de::Error::invalid_length(0, &self))?;
 
                 let number = match derive_method_num(&name) {
                     Ok(number) => number,
                     Err(_) => {
-                        return Err(fvm_ipld_encoding::de::Error::custom(format_args!(
+                        return Err(serde::de::Error::custom(format_args!(
                             "Could not derive method number for: {}",
                             &name
                         )))
@@ -224,6 +224,7 @@ mod test {
         match crate::from_slice::<Abi>(&serialized_abi) {
             Ok(_) => panic!("Deserialization should fail"),
             Err(err) => {
+                dbg!(&err);
                 assert!(err
                     .to_string()
                     .contains("Could not derive method number for: testFailTransfer"));

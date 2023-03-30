@@ -9,7 +9,7 @@ use std::{
     path::Path,
 };
 
-use anyhow::Context;
+use anyhow::{anyhow, Context};
 use kythera_lib::{pascal_case_split, Abi, WasmActor};
 use walkdir::WalkDir;
 
@@ -45,18 +45,18 @@ fn read_file_data<P: AsRef<Path>>(path: P) -> anyhow::Result<(String, Vec<u8>)> 
 fn set_abi_extension<P: AsRef<Path>>(path: P) -> anyhow::Result<String> {
     let mut path_buf = PathBuf::from(path.as_ref());
     path_buf.set_extension("cbor");
-    Ok(path_buf
+    path_buf
         .into_os_string()
         .into_string()
-        .map_err(|_| crate::error::Error::FailedConversion)?)
+        .map_err(|_| anyhow!("Failed to convert abi path to string"))
 }
 
 /// Create a WebAssembly actor from a binary and an Abi.
 fn create_actor<P: AsRef<Path>>(binary_path: P) -> anyhow::Result<WasmActor> {
-    let abi_path = derive_abi_path(&binary_path)?;
+    let abi_path = set_abi_extension(&binary_path)?;
 
-    let (file_name, bytecode) = get_file_data(binary_path)?;
-    let abi: Abi = kythera_lib::from_slice(&get_file_data(abi_path)?.1)?;
+    let (file_name, bytecode) = read_file_data(binary_path)?;
+    let abi: Abi = kythera_lib::from_slice(&read_file_data(abi_path)?.1)?;
 
     Ok(WasmActor::new(file_name, bytecode, abi))
 }
