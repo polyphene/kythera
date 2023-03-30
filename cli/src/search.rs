@@ -366,7 +366,7 @@ mod tests {
             ],
         };
 
-        // Create target actor files
+        // Create target actor files.
         set_actors_in_dir(dir_path, vec![("token", &target_actor_abi)]);
 
         let subdir_path = dir_path.join("token.t");
