@@ -230,7 +230,7 @@ mod tests {
             ],
         };
 
-        // Create target & test actors files
+        // Create target & test actors files.
         set_actors_in_dir(
             dir_path,
             vec![("token", &target_actor_abi), ("token.t", &test_actor_abi)],
