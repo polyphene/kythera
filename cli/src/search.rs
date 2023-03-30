@@ -96,7 +96,7 @@ pub fn search_files<P: AsRef<Path>>(path: P) -> anyhow::Result<Vec<Test>> {
 
     let mut tests = vec![];
     for target_actor_path in target_actor_paths {
-        // Get target actor
+        // Get target actor.
         let Ok(target_actor) = create_actor(&target_actor_path) else {
             log::error!("Could not get target Actor for binary {target_actor_path}");
             continue;
