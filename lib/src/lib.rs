@@ -1,3 +1,5 @@
+use std::sync::mpsc::Sender;
+
 // Copyright 2023 Polyphene.
 // SPDX-License-Identifier: Apache-2.0, MIT
 use cid::Cid;
@@ -78,15 +80,18 @@ struct DeployedActor {
 }
 
 /// Outcome of the test.
-#[derive(Debug)]
+#[derive(Clone, Debug)]
 pub enum TestResultType {
     Passed(ApplyRet),
     Failed(ApplyRet),
-    Erred(Error),
+    /// TODO: Upgrade to a proper `Reason` struct?
+    /// We Receive `anyhow::Result` from upstream so, there's probably
+    // not much we can do.
+    Erred(String),
 }
 
 /// Output of running a [`Method`] of an Actor test.
-#[derive(Debug)]
+#[derive(Clone, Debug)]
 pub struct TestResult<'a> {
     method: &'a Method,
     ret: TestResultType,
@@ -170,9 +175,12 @@ impl Tester {
     }
 
     /// Test an Actor on a `MemoryBlockstore`.
+    /// TODO: Instead of accepting `stream_results` as a channel that we then yield each result,
+    /// Should we make `test` return an iterator that yields each result by default?
     pub fn test<'a>(
         &mut self,
         test_actors: &'a [WasmActor],
+        stream_results: Option<Sender<(&'a WasmActor, TestResult<'a>)>>,
     ) -> Result<Vec<TestActorResults<'a>>, Error> {
         // TODO: Should we clone the `StateTree` before each test run,
         // and make our `Tester` stateless?
@@ -244,9 +252,8 @@ impl Tester {
                                     method.name(),
                                     target.name
                                 );
-                                let message = executor
-                                    .execute_message(message, ApplyKind::Explicit, 100)
-                                    .tester_err("Couldn't execute message");
+                                let message =
+                                    executor.execute_message(message, ApplyKind::Explicit, 100);
 
                                 let ret = match message {
                                     Ok(apply_ret) => {
@@ -259,10 +266,16 @@ impl Tester {
                                             _ => TestResultType::Failed(apply_ret),
                                         }
                                     }
-                                    Err(err) => TestResultType::Erred(err),
+                                    Err(err) => TestResultType::Erred(err.to_string()),
                                 };
 
-                                TestResult { method, ret }
+                                let result = TestResult { method, ret };
+                                if let Some(ref sender) = stream_results {
+                                    if let Err(err) = sender.send((test_actor, result.clone())) {
+                                        log::error!("Could not Stream the Result: {err}");
+                                    }
+                                }
+                                result
                             })
                             .collect(),
                     ),
@@ -395,7 +408,7 @@ mod tests {
             _ => {}
         }
 
-        match tester.test(&[test_actor.clone()]) {
+        match tester.test(&[test_actor.clone()], None) {
             Err(_) => {
                 panic!("Could not run test when testing Tester")
             }
