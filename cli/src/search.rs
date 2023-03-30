@@ -27,7 +27,6 @@ fn get_file_data<P: AsRef<Path>>(path: P) -> anyhow::Result<(String, Vec<u8>)> {
 
     // If we know the size of the file allocate preemptively its capacity.
     let file_size = file.metadata().as_ref().map(Metadata::len).unwrap_or(0);
-
     let mut content = Vec::with_capacity(file_size as usize);
 
     file.read_to_end(&mut content)
