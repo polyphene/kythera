@@ -19,8 +19,8 @@ pub struct Test {
     pub tests: Vec<WasmActor>,
 }
 
-/// Read the name of a file and its content as a binary vector
-fn get_file_data<P: AsRef<Path>>(path: P) -> anyhow::Result<(String, Vec<u8>)> {
+/// Read the name of a file and its contents as a binary vector
+fn read_file_data<P: AsRef<Path>>(path: P) -> anyhow::Result<(String, Vec<u8>)> {
     let path = path.as_ref();
     let mut file =
         File::open(path).with_context(|| format!("Could not open file {}", path.display()))?;
