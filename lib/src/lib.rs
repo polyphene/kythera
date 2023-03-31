@@ -20,6 +20,7 @@ use fvm_shared::{
     version::NetworkVersion,
 };
 
+use crate::error::WrapFVMError;
 use error::Error;
 use state_tree::{BuiltInActors, StateTree};
 
@@ -258,8 +259,6 @@ impl Tester {
                                     Ok(apply_ret) => {
                                         match (method.r#type(), apply_ret.msg_receipt.exit_code) {
                                             (MethodType::Test, ExitCode::OK)
-                                            | (MethodType::Constructor, ExitCode::OK)
-                                            | (MethodType::SetUp, ExitCode::OK)
                                             | (
                                                 MethodType::TestFail,
                                                 ExitCode::USR_ASSERTION_FAILED,
