@@ -1,7 +1,7 @@
-use std::path::PathBuf;
-use clap::Args;
 use crate::utils::search::search_files;
+use clap::Args;
 use kythera_lib::Tester;
+use std::path::PathBuf;
 
 /// Run an Actor tests.
 #[derive(Args, Debug)]
