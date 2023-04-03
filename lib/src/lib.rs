@@ -189,8 +189,6 @@ impl Tester {
         test_actors: &'a [WasmActor],
         stream_results: Option<Sender<(&'a WasmActor, TestResult<'a>)>>,
     ) -> Result<Vec<TestActorResults<'a>>, Error> {
-        // TODO: Should we clone the `StateTree` before each test run,
-        // and make our `Tester` stateless?
         let target = self
             .target_actor
             .as_ref()
@@ -226,11 +224,6 @@ impl Tester {
 
                 log::info!("Testing Actor {}", target.name);
 
-                // TODO concurrent testing
-                // We'll be able to use thread to do concurrent testing once we set the Engine Pool with more than
-                // one possible concurrent engine.
-                // The following steps will not end up in a result. Either we could finalize message
-                // handling and we return the related ApplyRet or we return nothing.
                 TestActorResults {
                     test_actor,
                     results: Ok(
