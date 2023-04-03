@@ -39,7 +39,7 @@ pub fn pascal_case_split(s: &str) -> Vec<&str> {
 }
 
 /// `Abi` is the structure we use internally to deal with Actor Binary Interface. It contains all
-/// [`Method`] that are exposed by an actor.
+/// exposed [`Method`] from a given Actor.
 #[derive(Serialize_tuple, Deserialize_tuple, Clone, Debug, PartialEq, Eq, PartialOrd, Ord)]
 pub struct Abi {
     pub methods: Vec<Method>,
