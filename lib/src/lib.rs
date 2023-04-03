@@ -271,7 +271,7 @@ mod tests {
         assert!(tester
             .state_tree
             .store()
-            .has(&*builtins_actors.manifest.get_system_code())
+            .has(builtins_actors.manifest.get_system_code())
             .unwrap());
 
         assert_eq!(
@@ -281,7 +281,7 @@ mod tests {
         assert!(tester
             .state_tree
             .store()
-            .has(&*builtins_actors.manifest.get_init_code())
+            .has(builtins_actors.manifest.get_init_code())
             .unwrap());
 
         assert_eq!(
@@ -291,7 +291,7 @@ mod tests {
         assert!(tester
             .state_tree
             .store()
-            .has(&*builtins_actors.manifest.get_account_code())
+            .has(builtins_actors.manifest.get_account_code())
             .unwrap());
 
         assert_eq!(
@@ -301,7 +301,7 @@ mod tests {
         assert!(tester
             .state_tree
             .store()
-            .has(&*builtins_actors.manifest.get_placeholder_code())
+            .has(builtins_actors.manifest.get_placeholder_code())
             .unwrap());
 
         assert_eq!(
@@ -311,7 +311,7 @@ mod tests {
         assert!(tester
             .state_tree
             .store()
-            .has(&*builtins_actors.manifest.get_eam_code())
+            .has(builtins_actors.manifest.get_eam_code())
             .unwrap());
 
         assert_eq!(tester.account.0, 100);

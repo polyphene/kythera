@@ -8,7 +8,6 @@ use crate::utils::constants::CONFIG_FILE;
 use crate::utils::repo::helpers::to_relative_path_to_project_root;
 use anyhow::Context;
 use serde::{Deserialize, Serialize};
-use serde_yaml;
 
 #[derive(thiserror::Error, Debug)]
 enum Error {
@@ -42,7 +41,9 @@ impl CliContext {
         };
         // create context object from fetched configuration and default values
         let context = CliContext {
-            actors_bin_dir: config.actors_bin_dir.unwrap_or(root_path.join("artifacts")),
+            actors_bin_dir: config
+                .actors_bin_dir
+                .unwrap_or_else(|| root_path.join("artifacts")),
         };
         // secure context by checking that targeted paths are part of the project
         let actors_bin_dir_str = context

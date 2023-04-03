@@ -1,7 +1,7 @@
 use anyhow::{Context, Result};
 use path_clean::PathClean;
+use std::env;
 use std::path::{Path, PathBuf};
-use std::{env, fs};
 
 #[derive(thiserror::Error, Debug)]
 enum Error {

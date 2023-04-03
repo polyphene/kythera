@@ -37,16 +37,12 @@ fn main() -> anyhow::Result<()> {
     match &cli.command {
         Some(Commands::Test(args)) => test::test(args)?,
         Some(Commands::Tmp {
-            command: sub_command,
+            command: Some(tmp::TmpSubCommands::PrintConfig {}),
         }) => {
-            match &sub_command {
-                Some(tmp::TmpSubCommands::PrintConfig {}) => {
-                    let context = CliContext::new()?;
-                    tmp::print_context(context)
-                }
-                None => {}
-            };
+            let context = CliContext::new()?;
+            tmp::print_context(context)
         }
+        Some(Commands::Tmp { command: None }) => {}
         None => {}
     }
     Ok(())
