@@ -1,12 +1,13 @@
+use std::sync::mpsc::Sender;
+
 // Copyright 2023 Polyphene.
 // SPDX-License-Identifier: Apache-2.0, MIT
 use cid::Cid;
 
 pub use kythera_common::{
-    abi::{pascal_case_split, Abi, Method},
+    abi::{pascal_case_split, Abi, Method, MethodType},
     from_slice, to_vec,
 };
-
 use kythera_fvm::{
     engine::EnginePool,
     executor::{ApplyKind, ApplyRet, Executor, KytheraExecutor},
@@ -17,10 +18,10 @@ use kythera_fvm::{
 
 use fvm_ipld_blockstore::Blockstore;
 use fvm_shared::{
-    address::Address, bigint::Zero, econ::TokenAmount, message::Message, version::NetworkVersion,
+    address::Address, bigint::Zero, econ::TokenAmount, error::ExitCode, message::Message,
+    version::NetworkVersion,
 };
 
-use crate::error::WrapFVMError;
 use error::Error;
 use state_tree::{BuiltInActors, StateTree};
 
@@ -84,11 +85,41 @@ struct DeployedActor {
     address: Address,
 }
 
-/// An Actor that has been deployed into a `BlockStore`.
+/// Outcome of the test.
+#[derive(Clone, Debug)]
+pub enum TestResultType {
+    Passed(ApplyRet),
+    Failed(ApplyRet),
+    /// TODO: Upgrade to a proper `Reason` struct?
+    /// We Receive `anyhow::Result` from upstream so, there's probably
+    // not much we can do.
+    Erred(String),
+}
+
+/// Output of running a [`Method`] of an Actor test.
+#[derive(Clone, Debug)]
+pub struct TestResult<'a> {
+    method: &'a Method,
+    ret: TestResultType,
+}
+
+impl<'a> TestResult<'a> {
+    /// Get the [`Method`] tested.
+    pub fn method(&self) -> &Method {
+        self.method
+    }
+
+    /// Get the [`ApplyRet`] of the test.
+    pub fn ret(&self) -> &TestResultType {
+        &self.ret
+    }
+}
+
+/// Output of testing a list of Tests and its [`Method`]s for a target Actor.
 #[derive(Debug)]
-pub struct TestResults {
-    pub test_actor: WasmActor,
-    pub results: Result<Vec<Result<ApplyRet, Error>>, Error>,
+pub struct TestActorResults<'a> {
+    pub test_actor: &'a WasmActor,
+    pub results: Result<Vec<TestResult<'a>>, Error>,
 }
 
 impl Tester {
@@ -150,7 +181,13 @@ impl Tester {
     }
 
     /// Test an Actor on a `MemoryBlockstore`.
-    pub fn test(&mut self, test_actors: &[WasmActor]) -> Result<Vec<TestResults>, Error> {
+    /// TODO: Instead of accepting `stream_results` as a channel that we then yield each result,
+    /// Should we make `test` return an iterator that yields each result by default?
+    pub fn test<'a>(
+        &mut self,
+        test_actors: &'a [WasmActor],
+        stream_results: Option<Sender<(&'a WasmActor, TestResult<'a>)>>,
+    ) -> Result<Vec<TestActorResults<'a>>, Error> {
         // TODO: Should we clone the `StateTree` before each test run,
         // and make our `Tester` stateless?
         let target = self
@@ -177,8 +214,8 @@ impl Tester {
                     Ok(test_address) => test_address,
                     // Error on deployment, return error as part of [`TestResults`]
                     Err(err) => {
-                        return TestResults {
-                            test_actor: test_actor.clone(),
+                        return TestActorResults {
+                            test_actor,
                             results: Err(err),
                         }
                     }
@@ -193,39 +230,61 @@ impl Tester {
                 // one possible concurrent engine.
                 // The following steps will not end up in a result. Either we could finalize message
                 // handling and we return the related ApplyRet or we return nothing.
-                TestResults {
-                    test_actor: test_actor.clone(),
-                    results: Ok(test_actor
-                        .abi
-                        .methods
-                        .iter()
-                        .map(|method| {
-                            let blockstore = self.state_tree.store().clone();
+                TestActorResults {
+                    test_actor,
+                    results: Ok(
+                        test_actor
+                            .abi
+                            .methods
+                            .iter()
+                            .map(|method| {
+                                let blockstore = self.state_tree.store().clone();
 
-                            let mut executor =
-                                Self::new_executor(blockstore, root, self.builtin_actors.root);
+                                let mut executor =
+                                    Self::new_executor(blockstore, root, self.builtin_actors.root);
 
-                            let message = Message {
-                                from: self.account.1,
-                                to: test_address,
-                                gas_limit: 1000000000,
-                                method_num: method.number,
-                                params: target_id.clone().into(),
-                                ..Message::default()
-                            };
+                                let message = Message {
+                                    from: self.account.1,
+                                    to: test_address,
+                                    gas_limit: 1000000000,
+                                    method_num: method.number(),
+                                    params: target_id.clone().into(),
+                                    ..Message::default()
+                                };
 
-                            log::info!(
-                                "Testing test {}.{}() for Actor {}",
-                                test_actor.name,
-                                method.name,
-                                target.name
-                            );
-                            let apply_ret = executor
-                                .execute_message(message, ApplyKind::Explicit, 100)
-                                .tester_err("Couldn't execute message")?;
-                            Ok(apply_ret)
-                        })
-                        .collect()),
+                                log::info!(
+                                    "Testing test {}.{}() for Actor {}",
+                                    test_actor.name,
+                                    method.name(),
+                                    target.name
+                                );
+                                let message =
+                                    executor.execute_message(message, ApplyKind::Explicit, 100);
+
+                                let ret = match message {
+                                    Ok(apply_ret) => {
+                                        match (method.r#type(), apply_ret.msg_receipt.exit_code) {
+                                            (MethodType::Test, ExitCode::OK)
+                                            | (
+                                                MethodType::TestFail,
+                                                ExitCode::USR_ASSERTION_FAILED,
+                                            ) => TestResultType::Passed(apply_ret),
+                                            _ => TestResultType::Failed(apply_ret),
+                                        }
+                                    }
+                                    Err(err) => TestResultType::Erred(err.to_string()),
+                                };
+
+                                let result = TestResult { method, ret };
+                                if let Some(ref sender) = stream_results {
+                                    if let Err(err) = sender.send((test_actor, result.clone())) {
+                                        log::error!("Could not Stream the Result: {err}");
+                                    }
+                                }
+                                result
+                            })
+                            .collect(),
+                    ),
                 }
             })
             .collect())
@@ -342,14 +401,8 @@ mod tests {
         let test_wasm_bin: Vec<u8> = Vec::from(BASIC_TEST_ACTOR_BINARY);
         let test_abi = Abi {
             methods: vec![
-                Method {
-                    number: 3948827889,
-                    name: String::from("TestOne"),
-                },
-                Method {
-                    number: 891686990,
-                    name: String::from("TestTwo"),
-                },
+                Method::new_from_name("TestOne").unwrap(),
+                Method::new_from_name("TestTwo").unwrap(),
             ],
         };
         let test_actor = WasmActor::new(String::from("Basic"), test_wasm_bin, test_abi);
@@ -361,14 +414,14 @@ mod tests {
             _ => {}
         }
 
-        match tester.test(&[test_actor.clone()]) {
+        match tester.test(&[test_actor.clone()], None) {
             Err(_) => {
                 panic!("Could not run test when testing Tester")
             }
             Ok(test_res) => {
                 assert_eq!(test_res.len(), 1usize);
                 assert_eq!(test_res[0].results.as_ref().unwrap().len(), 2usize);
-                assert_eq!(test_res[0].test_actor, test_actor);
+                assert_eq!(test_res[0].test_actor, &test_actor);
 
                 test_res[0]
                     .results
@@ -376,19 +429,21 @@ mod tests {
                     .unwrap()
                     .iter()
                     .enumerate()
-                    .for_each(|(i, option_apply_ret)| match option_apply_ret {
-                        Ok(apply_ret) => {
-                            assert_eq!(apply_ret.msg_receipt.exit_code, ExitCode::OK);
-                            let ret_value: String =
-                                apply_ret.msg_receipt.return_data.deserialize().unwrap();
-                            if i == 0usize {
-                                assert_eq!(ret_value, String::from("TestOne"))
-                            } else {
-                                assert_eq!(ret_value, String::from("TestTwo"))
+                    .for_each(
+                        |(i, result)| match (result.method().r#type(), result.ret()) {
+                            (MethodType::Test, TestResultType::Passed(apply_ret)) => {
+                                assert_eq!(apply_ret.msg_receipt.exit_code, ExitCode::OK);
+                                let ret_value: String =
+                                    apply_ret.msg_receipt.return_data.deserialize().unwrap();
+                                if i == 0usize {
+                                    assert_eq!(ret_value, String::from("TestOne"))
+                                } else {
+                                    assert_eq!(ret_value, String::from("TestTwo"))
+                                }
                             }
-                        }
-                        _ => panic!("test against basic test actor should pass"),
-                    })
+                            _ => panic!("test against basic test actor should pass"),
+                        },
+                    )
             }
         }
     }

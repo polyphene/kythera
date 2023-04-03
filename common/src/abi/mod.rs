@@ -7,7 +7,7 @@ use fvm_ipld_encoding::tuple::{Deserialize_tuple, Serialize_tuple};
 use serde::de::SeqAccess;
 
 use crate::abi::blake2b::Blake2bHasher;
-use crate::error;
+use crate::error::{self, Error};
 
 mod blake2b;
 
@@ -39,21 +39,71 @@ pub fn pascal_case_split(s: &str) -> Vec<&str> {
 }
 
 /// `Abi` is the structure we use internally to deal with Actor Binary Interface. It contains all
-/// exposed [`Method`] from a given actor.
 #[derive(Serialize_tuple, Deserialize_tuple, Clone, Debug, PartialEq, Eq, PartialOrd, Ord)]
 pub struct Abi {
     pub methods: Vec<Method>,
 }
 
-/// Method number indicator for calling actor methods.
+/// Method number indicator for calling Actor methods.
 pub type MethodNum = u64;
 
-/// `Methods` describes an exposed method from an actor entrypoint.
+/// [`Method`] describes an exposed method from an actor entrypoint.
 #[derive(Serialize_tuple, Clone, Debug, PartialEq, Eq, PartialOrd, Ord)]
 pub struct Method {
     #[serde(skip_serializing)]
-    pub number: MethodNum,
-    pub name: String,
+    number: MethodNum,
+    name: String,
+    #[serde(skip_serializing)]
+    r#type: MethodType,
+}
+
+/// Type of the [`Abi`] [`Method`] of the test Actor.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord)]
+pub enum MethodType {
+    Constructor,
+    Entrypoint,
+    SetUp,
+    Test,
+    TestFail,
+}
+
+impl Method {
+    /// Get the [`Method`] number.
+    pub fn number(&self) -> MethodNum {
+        self.number
+    }
+
+    /// Get the [`Method`] number.
+    pub fn name(&self) -> &str {
+        &self.name
+    }
+
+    /// Get the [`Method`] type.
+    pub fn r#type(&self) -> MethodType {
+        self.r#type
+    }
+}
+
+impl Method {
+    pub fn new_from_name(name: &str) -> Result<Self, Error> {
+        let number = derive_method_num(name)?;
+        let name = name.to_string();
+
+        let split = pascal_case_split(&name);
+        let r#type = match &split[..] {
+            ["Constructor", ..] => MethodType::Constructor,
+            ["Set", "Up", ..] => MethodType::SetUp,
+            ["Test", "Fail", ..] => MethodType::TestFail,
+            ["Test", ..] => MethodType::Test,
+            _ => MethodType::Entrypoint,
+        };
+
+        Ok(Method {
+            number,
+            name,
+            r#type,
+        })
+    }
 }
 
 // Implement custom deserialization method for [`Method`] as we expect the bytes to be deserialized to only contain
@@ -80,17 +130,9 @@ impl<'de> serde::de::Deserialize<'de> for Method {
                     .next_element::<String>()?
                     .ok_or_else(|| serde::de::Error::invalid_length(0, &self))?;
 
-                let number = match derive_method_num(&name) {
-                    Ok(number) => number,
-                    Err(_) => {
-                        return Err(serde::de::Error::custom(format_args!(
-                            "Could not derive method number for: {}",
-                            &name
-                        )))
-                    }
-                };
-
-                Ok(Self::Value { number, name })
+                Self::Value::new_from_name(&name).map_err(|_| {
+                    serde::de::Error::custom(format!("Couldn't deserialize method: {}", &name))
+                })
             }
         }
 
@@ -105,7 +147,7 @@ pub fn derive_method_num(name: &str) -> Result<MethodNum, error::Error> {
 
     match resolver.method_number(name) {
         Ok(method_number) => Ok(method_number),
-        Err(err) => Err(error::Error::MethodNumberGeneration {
+        Err(err) => Err(Error::MethodNumberGeneration {
             name: name.into(),
             source: err.into(),
         }),
@@ -115,7 +157,7 @@ pub fn derive_method_num(name: &str) -> Result<MethodNum, error::Error> {
 #[cfg(test)]
 mod test {
     use super::{derive_method_num, pascal_case_split};
-    use crate::abi::{Abi, Method};
+    use crate::abi::{Abi, Method, MethodType};
 
     #[test]
     fn test_method_derivation() {
@@ -171,10 +213,12 @@ mod test {
                 Method {
                     number: derive_method_num(&test_transfer_name).unwrap(),
                     name: test_transfer_name,
+                    r#type: MethodType::Test,
                 },
                 Method {
                     number: derive_method_num(&test_transfer_fail_name).unwrap(),
                     name: test_transfer_fail_name,
+                    r#type: MethodType::TestFail,
                 },
             ],
         };
@@ -203,10 +247,12 @@ mod test {
                 Method {
                     number: derive_method_num(&test_transfer_name).unwrap(),
                     name: test_transfer_name,
+                    r#type: MethodType::Test,
                 },
                 Method {
                     number: 3280706483,
                     name: test_transfer_fail_name,
+                    r#type: MethodType::TestFail,
                 },
             ],
         };
@@ -227,8 +273,31 @@ mod test {
                 dbg!(&err);
                 assert!(err
                     .to_string()
-                    .contains("Could not derive method number for: testFailTransfer"));
+                    .contains("Couldn't deserialize method: testFailTransfer"));
             }
         };
+    }
+
+    #[test]
+    fn test_method_constructor() {
+        assert_eq!(
+            Method::new_from_name("TestOne").unwrap().r#type,
+            MethodType::Test
+        );
+        assert_eq!(
+            Method::new_from_name("TestFailOne").unwrap().r#type,
+            MethodType::TestFail
+        );
+        assert_eq!(
+            Method::new_from_name("Constructor").unwrap().r#type,
+            MethodType::Constructor
+        );
+        assert_eq!(
+            Method::new_from_name("SetUp").unwrap().r#type,
+            MethodType::SetUp
+        );
+
+        assert!(Method::new_from_name("testOne").is_err());
+        assert!(Method::new_from_name("").is_err());
     }
 }

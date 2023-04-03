@@ -207,26 +207,14 @@ mod tests {
         let dir_path = dir.path();
         let target_actor_abi = Abi {
             methods: vec![
-                Method {
-                    number: 1,
-                    name: String::from("Constructor"),
-                },
-                Method {
-                    number: 80475954,
-                    name: String::from("Transfer"),
-                },
+                Method::new_from_name("Constructor").unwrap(),
+                Method::new_from_name("Transfer").unwrap(),
             ],
         };
         let test_actor_abi = Abi {
             methods: vec![
-                Method {
-                    number: 1,
-                    name: String::from("Constructor"),
-                },
-                Method {
-                    number: 3760293944,
-                    name: String::from("TestTransfer"),
-                },
+                Method::new_from_name("Constructor").unwrap(),
+                Method::new_from_name("TestTransfer").unwrap(),
             ],
         };
 
@@ -252,38 +240,20 @@ mod tests {
         let dir_path = dir.path();
         let target_actor_abi = Abi {
             methods: vec![
-                Method {
-                    number: 1,
-                    name: String::from("Constructor"),
-                },
-                Method {
-                    number: 80475954,
-                    name: String::from("Transfer"),
-                },
+                Method::new_from_name("Constructor").unwrap(),
+                Method::new_from_name("Transfer").unwrap(),
             ],
         };
         let test_1_actor_abi = Abi {
             methods: vec![
-                Method {
-                    number: 1,
-                    name: String::from("Constructor"),
-                },
-                Method {
-                    number: 1759653442,
-                    name: String::from("TestTransferOne"),
-                },
+                Method::new_from_name("Constructor").unwrap(),
+                Method::new_from_name("TestTransferOne").unwrap(),
             ],
         };
         let test_2_actor_abi = Abi {
             methods: vec![
-                Method {
-                    number: 1,
-                    name: String::from("Constructor"),
-                },
-                Method {
-                    number: 3608985348,
-                    name: String::from("TestTransferTwo"),
-                },
+                Method::new_from_name("Constructor").unwrap(),
+                Method::new_from_name("TestTransferTwo").unwrap(),
             ],
         };
 
@@ -319,50 +289,26 @@ mod tests {
 
         let target_actor_abi = Abi {
             methods: vec![
-                Method {
-                    number: 1,
-                    name: String::from("Constructor"),
-                },
-                Method {
-                    number: 80475954,
-                    name: String::from("Transfer"),
-                },
+                Method::new_from_name("Constructor").unwrap(),
+                Method::new_from_name("Transfer").unwrap(),
             ],
         };
         let test_1_actor_abi = Abi {
             methods: vec![
-                Method {
-                    number: 1,
-                    name: String::from("Constructor"),
-                },
-                Method {
-                    number: 1759653442,
-                    name: String::from("TestTransferOne"),
-                },
+                Method::new_from_name("Constructor").unwrap(),
+                Method::new_from_name("TestTransferOne").unwrap(),
             ],
         };
         let test_2_1_actor_abi = Abi {
             methods: vec![
-                Method {
-                    number: 1,
-                    name: String::from("Constructor"),
-                },
-                Method {
-                    number: 2417587449,
-                    name: String::from("TestTransferTwoOne"),
-                },
+                Method::new_from_name("Constructor").unwrap(),
+                Method::new_from_name("TestTransferTwoOne").unwrap(),
             ],
         };
         let test_2_2_actor_abi = Abi {
             methods: vec![
-                Method {
-                    number: 1,
-                    name: String::from("Constructor"),
-                },
-                Method {
-                    number: 3281576210,
-                    name: String::from("TestTransferTwoTwo"),
-                },
+                Method::new_from_name("Constructor").unwrap(),
+                Method::new_from_name("TestTransferTwoTwo").unwrap(),
             ],
         };
 
