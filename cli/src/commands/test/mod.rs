@@ -16,7 +16,7 @@ pub(crate) fn test(args: &TestArgs) -> anyhow::Result<()> {
     for test in tests {
         let mut tester = Tester::new();
         tester.deploy_target_actor(test.actor)?;
-        tester.test(&test.tests)?;
+        tester.test(&test.tests, None)?;
     }
     Ok(())
 }
