@@ -101,15 +101,14 @@ impl StateTree {
         let manifest = Manifest::load(blockstore, &root, version)
             .expect("Should be able to load built-in Actor manifest");
 
-        // deploy built-in Actors on the StateTree.
         let init_state = init_actor::State::new_test(&blockstore);
-        let sys_state = system_actor::State {
-            builtin_actors: root,
-        };
 
+        // Set system actor.
         self.set_actor(
             "System Actor",
-            sys_state,
+            fil_actor_system::State {
+                builtin_actors: root,
+            },
             *manifest
                 .code_by_id(Type::System as u32)
                 .expect("Should be able to get system Actor code from manifest"),
@@ -119,6 +118,7 @@ impl StateTree {
         )
         .expect("Should be able to set the system Actor");
 
+        // Set init actor
         self.set_actor(
             "Init Actor",
             init_state,
@@ -130,6 +130,8 @@ impl StateTree {
             TokenAmount::zero(),
         )
         .expect("Should be able to set the Init Actor");
+
+        // Set reward actor
 
         BuiltInActors {
             root: builtin_actors,
