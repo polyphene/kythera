@@ -54,7 +54,6 @@ pub struct WasmActor {
 
 impl WasmActor {
     /// Create a new WebAssembly Actor.
-    // TODO: parse the Abi methods from the bytecode instead of receiving it via constructor.
     pub fn new(name: String, bytecode: Vec<u8>, abi: Abi) -> Self {
         Self {
             name,
@@ -91,9 +90,6 @@ struct DeployedActor {
 pub enum TestResultType {
     Passed(ApplyRet),
     Failed(ApplyRet),
-    /// TODO: Upgrade to a proper `Reason` struct?
-    /// We Receive `anyhow::Result` from upstream so, there's probably
-    // not much we can do.
     Erred(String),
 }
 
@@ -182,8 +178,6 @@ impl Tester {
     }
 
     /// Test an Actor on a `MemoryBlockstore`.
-    /// TODO: Instead of accepting `stream_results` as a channel that we then yield each result,
-    /// Should we make `test` return an iterator that yields each result by default?
     pub fn test<'a>(
         &mut self,
         test_actors: &'a [WasmActor],
