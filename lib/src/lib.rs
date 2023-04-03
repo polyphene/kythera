@@ -20,7 +20,6 @@ use fvm_shared::{
     version::NetworkVersion,
 };
 
-use crate::error::WrapFVMError;
 use error::Error;
 use state_tree::{BuiltInActors, StateTree};
 
@@ -100,7 +99,7 @@ pub struct TestResult<'a> {
 impl<'a> TestResult<'a> {
     /// Get the [`Method`] tested.
     pub fn method(&self) -> &Method {
-        &self.method
+        self.method
     }
 
     /// Get the [`ApplyRet`] of the test.

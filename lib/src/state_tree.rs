@@ -18,7 +18,9 @@ use kythera_fvm::{
 use libsecp256k1::{PublicKey, SecretKey};
 use rand::SeedableRng;
 
-const EAM_ACTOR_ID: ActorID = 10;
+use fil_actors_runtime::{runtime::builtins::Type, INIT_ACTOR_ID, SYSTEM_ACTOR_ID};
+use fvm_shared::bigint::Zero;
+
 const STATE_TREE_VERSION: StateTreeVersion = StateTreeVersion::V5;
 
 /// Built-in Actors that are deployed to the testing `StateTree`.
@@ -108,33 +110,26 @@ impl StateTree {
         self.set_actor(
             "System Actor",
             sys_state,
-            *manifest.get_system_code(),
-            system_actor::SYSTEM_ACTOR_ID,
-            1,
-            Default::default(),
+            *manifest
+                .code_by_id(Type::System as u32)
+                .expect("Should be able to get system Actor code from manifest"),
+            SYSTEM_ACTOR_ID,
+            0,
+            TokenAmount::zero(),
         )
         .expect("Should be able to set the system Actor");
 
         self.set_actor(
             "Init Actor",
             init_state,
-            *manifest.get_init_code(),
-            init_actor::INIT_ACTOR_ID,
-            1,
-            Default::default(),
+            *manifest
+                .code_by_id(Type::Init as u32)
+                .expect("Should be able to get init Actor code from manifest"),
+            INIT_ACTOR_ID,
+            0,
+            TokenAmount::zero(),
         )
         .expect("Should be able to set the Init Actor");
-
-        self.set_actor(
-            "Eam Actor",
-            [(); 0],
-            *manifest.get_eam_code(),
-            // EAM Actor Id.
-            EAM_ACTOR_ID,
-            1,
-            Default::default(),
-        )
-        .expect("Should be able to set the Eam Actor");
 
         BuiltInActors {
             root: builtin_actors,
