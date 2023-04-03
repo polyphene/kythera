@@ -257,7 +257,7 @@ mod tests {
             ],
         };
 
-        // Create target actor files
+        // Create target actor files.
         create_actors_in_dir(dir_path, vec![("token", &target_actor_abi)]);
 
         // Create tests directory.
