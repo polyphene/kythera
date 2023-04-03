@@ -19,7 +19,7 @@ pub struct Test {
     pub tests: Vec<WasmActor>,
 }
 
-/// Read the name of a file and its contents as a binary vector
+/// Read the name of a file and its contents as a binary vector.
 fn read_file_data<P: AsRef<Path>>(path: P) -> anyhow::Result<(String, Vec<u8>)> {
     let path = path.as_ref();
     let mut file =
@@ -41,7 +41,7 @@ fn read_file_data<P: AsRef<Path>>(path: P) -> anyhow::Result<(String, Vec<u8>)> 
     Ok((file_name, content))
 }
 
-/// Set the extension of a given path to .cbor
+/// Set the extension of a given path to .cbor .
 fn set_abi_extension<P: AsRef<Path>>(path: P) -> anyhow::Result<String> {
     let mut path_buf = PathBuf::from(path.as_ref());
     path_buf.set_extension("cbor");
@@ -173,7 +173,7 @@ mod tests {
     use tempfile::tempdir;
 
     // Util to create actor files on a given directory path.
-    fn set_actors_in_dir(dir_path: &Path, actors: Vec<(&str, &Abi)>) -> () {
+    fn create_actors_in_dir(dir_path: &Path, actors: Vec<(&str, &Abi)>) -> () {
         for (name, abi) in actors {
             File::create(dir_path.join(name.to_owned() + ".wasm"))
                 .unwrap()
@@ -219,7 +219,7 @@ mod tests {
         };
 
         // Create target & test actors files.
-        set_actors_in_dir(
+        create_actors_in_dir(
             dir_path,
             vec![("token", &target_actor_abi), ("token.t", &test_actor_abi)],
         );
@@ -258,14 +258,14 @@ mod tests {
         };
 
         // Create target actor files
-        set_actors_in_dir(dir_path, vec![("token", &target_actor_abi)]);
+        create_actors_in_dir(dir_path, vec![("token", &target_actor_abi)]);
 
-        // Create tests directory
+        // Create tests directory.
         let subdir_path = dir_path.join("token.t");
         fs::create_dir(&subdir_path).unwrap();
 
         // Setup tests assets.
-        set_actors_in_dir(
+        create_actors_in_dir(
             subdir_path.as_path(),
             vec![("test1", &test_1_actor_abi), ("test2", &test_2_actor_abi)],
         );
@@ -313,19 +313,19 @@ mod tests {
         };
 
         // Create target actor files.
-        set_actors_in_dir(dir_path, vec![("token", &target_actor_abi)]);
+        create_actors_in_dir(dir_path, vec![("token", &target_actor_abi)]);
 
         let subdir_path = dir_path.join("token.t");
         fs::create_dir(&subdir_path).unwrap();
 
         // Setup test 1 assets.
-        set_actors_in_dir(subdir_path.as_path(), vec![("test1", &test_1_actor_abi)]);
+        create_actors_in_dir(subdir_path.as_path(), vec![("test1", &test_1_actor_abi)]);
 
         let subsubdir_path = subdir_path.join("test2");
         fs::create_dir(&subsubdir_path).unwrap();
 
-        // Setup test 2 assets
-        set_actors_in_dir(
+        // Setup test 2 assets.
+        create_actors_in_dir(
             subsubdir_path.as_path(),
             vec![
                 ("test2.1", &test_2_1_actor_abi),

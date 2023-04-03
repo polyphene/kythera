@@ -39,6 +39,7 @@ pub fn pascal_case_split(s: &str) -> Vec<&str> {
 }
 
 /// `Abi` is the structure we use internally to deal with Actor Binary Interface. It contains all
+/// [`Method`] that are exposed by an actor.
 #[derive(Serialize_tuple, Deserialize_tuple, Clone, Debug, PartialEq, Eq, PartialOrd, Ord)]
 pub struct Abi {
     pub methods: Vec<Method>,
@@ -106,8 +107,8 @@ impl Method {
     }
 }
 
-// Implement custom deserialization method for [`Method`] as we expect the bytes to be deserialized to only contain
-// the `name` and not the `number` property that is generated at deserialization time.
+/// Implement custom deserialization method for [`Method`] as we expect the bytes to be deserialized to only contain
+/// the `name` and not the `number` property that is generated at deserialization time.
 // TODO we could try to simplify our deserialization process in the future
 impl<'de> serde::de::Deserialize<'de> for Method {
     fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
@@ -142,7 +143,7 @@ impl<'de> serde::de::Deserialize<'de> for Method {
 }
 
 /// `derive_method_num` will return the method number for a given method name based on the FRC-042:
-/// https://github.com/filecoin-project/FIPs/blob/master/FRCs/frc-0042.md
+/// https://github.com/filecoin-project/FIPs/blob/master/FRCs/frc-0042.md .
 pub fn derive_method_num(name: &str) -> Result<MethodNum, error::Error> {
     let resolver = MethodResolver::new(Blake2bHasher {});
 
@@ -176,7 +177,7 @@ mod test {
 
     #[test]
     fn test_fail_method_derivation() {
-        // Using function with lower case as first character in method name to fail the test
+        // Using function with lower case as first character in method name to fail the test.
         let method_name = String::from("test_transfer");
 
         match derive_method_num(&method_name) {
@@ -205,7 +206,7 @@ mod test {
 
     #[test]
     fn test_tuple_serde() {
-        // Test assets
+        // Test assets.
         let test_transfer_name = String::from("TestTransfer");
         let test_transfer_fail_name = String::from("TestFailTransfer");
 
@@ -228,18 +229,18 @@ mod test {
             84, 101, 115, 116, 70, 97, 105, 108, 84, 114, 97, 110, 115, 102, 101, 114,
         ];
 
-        // Serialize
+        // Serialize.
         let abi_vec = crate::to_vec(&abi).unwrap();
         assert_eq!(abi_vec, serialized_abi);
 
-        // Deserialize
+        // Deserialize.
         let deserialized_abi: Abi = crate::from_slice(&serialized_abi).unwrap();
         assert_eq!(deserialized_abi, abi);
     }
 
     #[test]
     fn test_fail_tuple_serde() {
-        // Test assets
+        // Test assets.
         let test_transfer_name = String::from("TestTransfer");
         let test_transfer_fail_name = String::from("testFailTransfer");
 
@@ -263,11 +264,11 @@ mod test {
             116, 101, 115, 116, 70, 97, 105, 108, 84, 114, 97, 110, 115, 102, 101, 114,
         ];
 
-        // Serialize
+        // Serialize.
         let abi_vec = crate::to_vec(&abi).unwrap();
         assert_eq!(abi_vec, serialized_abi);
 
-        // Deserialize
+        // Deserialize.
         match crate::from_slice::<Abi>(&serialized_abi) {
             Ok(_) => panic!("Deserialization should fail"),
             Err(err) => {
