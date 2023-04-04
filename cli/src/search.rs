@@ -209,16 +209,14 @@ mod tests {
         let dir = tempdir().unwrap();
         let dir_path = dir.path();
         let target_actor_abi = Abi {
-            methods: vec![
-                Method::new_from_name("Constructor").unwrap(),
-                Method::new_from_name("Transfer").unwrap(),
-            ],
+            constructor: Method::new_from_name("Constructor").ok(),
+            set_up: None,
+            methods: vec![Method::new_from_name("Transfer").unwrap()],
         };
         let test_actor_abi = Abi {
-            methods: vec![
-                Method::new_from_name("Constructor").unwrap(),
-                Method::new_from_name("TestTransfer").unwrap(),
-            ],
+            constructor: Method::new_from_name("Constructor").ok(),
+            set_up: None,
+            methods: vec![Method::new_from_name("TestTransfer").unwrap()],
         };
 
         // Create target & test actors files.
@@ -242,22 +240,19 @@ mod tests {
         let dir = tempdir().unwrap();
         let dir_path = dir.path();
         let target_actor_abi = Abi {
-            methods: vec![
-                Method::new_from_name("Constructor").unwrap(),
-                Method::new_from_name("Transfer").unwrap(),
-            ],
+            constructor: Method::new_from_name("Constructor").ok(),
+            set_up: None,
+            methods: vec![Method::new_from_name("Transfer").unwrap()],
         };
         let test_1_actor_abi = Abi {
-            methods: vec![
-                Method::new_from_name("Constructor").unwrap(),
-                Method::new_from_name("TestTransferOne").unwrap(),
-            ],
+            constructor: Method::new_from_name("Constructor").ok(),
+            set_up: None,
+            methods: vec![Method::new_from_name("TestTransferOne").unwrap()],
         };
         let test_2_actor_abi = Abi {
-            methods: vec![
-                Method::new_from_name("Constructor").unwrap(),
-                Method::new_from_name("TestTransferTwo").unwrap(),
-            ],
+            constructor: Method::new_from_name("Constructor").ok(),
+            set_up: None,
+            methods: vec![Method::new_from_name("TestTransferTwo").unwrap()],
         };
 
         // Create target actor files.
@@ -291,28 +286,24 @@ mod tests {
         let dir_path = dir.path();
 
         let target_actor_abi = Abi {
-            methods: vec![
-                Method::new_from_name("Constructor").unwrap(),
-                Method::new_from_name("Transfer").unwrap(),
-            ],
+            constructor: Method::new_from_name("Constructor").ok(),
+            set_up: None,
+            methods: vec![Method::new_from_name("Transfer").unwrap()],
         };
         let test_1_actor_abi = Abi {
-            methods: vec![
-                Method::new_from_name("Constructor").unwrap(),
-                Method::new_from_name("TestTransferOne").unwrap(),
-            ],
+            constructor: Method::new_from_name("Constructor").ok(),
+            set_up: None,
+            methods: vec![Method::new_from_name("TestTransferOne").unwrap()],
         };
         let test_2_1_actor_abi = Abi {
-            methods: vec![
-                Method::new_from_name("Constructor").unwrap(),
-                Method::new_from_name("TestTransferTwoOne").unwrap(),
-            ],
+            constructor: Method::new_from_name("Constructor").ok(),
+            set_up: None,
+            methods: vec![Method::new_from_name("TestTransferTwoOne").unwrap()],
         };
         let test_2_2_actor_abi = Abi {
-            methods: vec![
-                Method::new_from_name("Constructor").unwrap(),
-                Method::new_from_name("TestTransferTwoTwo").unwrap(),
-            ],
+            constructor: Method::new_from_name("Constructor").ok(),
+            set_up: None,
+            methods: vec![Method::new_from_name("TestTransferTwoTwo").unwrap()],
         };
 
         // Create target actor files.

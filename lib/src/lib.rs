@@ -395,12 +395,18 @@ mod tests {
 
         // Set target actor
         let target_wasm_bin = wat::parse_str(TARGET_WAT).unwrap();
-        let target_abi = Abi { methods: vec![] };
+        let target_abi = Abi {
+            constructor: None,
+            set_up: None,
+            methods: vec![],
+        };
         let target_actor = WasmActor::new(String::from("Target"), target_wasm_bin, target_abi);
 
         // Set test actor
         let test_wasm_bin: Vec<u8> = Vec::from(BASIC_TEST_ACTOR_BINARY);
         let test_abi = Abi {
+            constructor: None,
+            set_up: None,
             methods: vec![
                 Method::new_from_name("TestOne").unwrap(),
                 Method::new_from_name("TestTwo").unwrap(),

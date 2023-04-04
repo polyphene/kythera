@@ -3,7 +3,6 @@
 
 use anyhow::Result;
 use frc42_dispatch::hash::MethodResolver;
-use fvm_ipld_encoding::tuple::{Deserialize_tuple, Serialize_tuple};
 use serde::de::SeqAccess;
 
 use crate::abi::blake2b::Blake2bHasher;
@@ -40,21 +39,112 @@ pub fn pascal_case_split(s: &str) -> Vec<&str> {
 
 /// `Abi` is the structure we use internally to deal with Actor Binary Interface. It contains all
 /// exposed [`Method`] from a given Actor.
-#[derive(Serialize_tuple, Deserialize_tuple, Clone, Debug, PartialEq, Eq, PartialOrd, Ord)]
+#[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord)]
 pub struct Abi {
+    pub constructor: Option<Method>,
+    pub set_up: Option<Method>,
     pub methods: Vec<Method>,
+}
+
+impl Abi {
+    /// Get the `Constructor` method on the Abi if it exists.
+    pub fn constructor(&self) -> Option<&Method> {
+        self.constructor.as_ref()
+    }
+
+    /// Get the `SetUp` method on the Abi if it exists.
+    pub fn set_up(&self) -> Option<&Method> {
+        self.set_up.as_ref()
+    }
+
+    pub fn methods(&self) -> &[Method] {
+        &self.methods
+    }
+}
+
+/// Custom implementation of [`Serialize`] so that we join `Constructor` and `SetUp`
+/// into the rest of the methods.
+impl serde::Serialize for Abi {
+    fn serialize<S>(&self, serializer: S) -> std::result::Result<S::Ok, S::Error>
+    where
+        S: serde::Serializer,
+    {
+        let mut s = vec![];
+        if let Some(constructor) = &self.constructor {
+            s.push(vec![constructor.name()]);
+        }
+        if let Some(constructor) = &self.set_up {
+            s.push(vec![constructor.name()]);
+        }
+        let methods = self.methods.iter().map(|m| vec![m.name()]);
+        s.extend(methods);
+
+        serde::Serialize::serialize(&vec![s], serializer)
+    }
+}
+
+/// Custom implementation of [`Deserialize`] so that we check for `Constructor` and `SetUp`
+/// existence and assert there's only one of each.
+impl<'de> serde::Deserialize<'de> for Abi {
+    fn deserialize<D>(deserializer: D) -> std::result::Result<Self, D::Error>
+    where
+        D: serde::Deserializer<'de>,
+    {
+        struct AbiVisitor;
+
+        impl<'de> serde::de::Visitor<'de> for AbiVisitor {
+            type Value = Abi;
+
+            fn expecting(&self, formatter: &mut std::fmt::Formatter) -> std::fmt::Result {
+                formatter.write_str("Abi")
+            }
+
+            fn visit_seq<A>(self, mut seq: A) -> std::result::Result<Self::Value, A::Error>
+            where
+                A: SeqAccess<'de>,
+            {
+                let mut constructor = None;
+                let mut set_up = None;
+
+                let mut methods = vec![];
+                let seq_methods = seq
+                    .next_element::<Vec<Method>>()?
+                    .ok_or_else(|| serde::de::Error::invalid_length(0, &self))?;
+
+                // TODO: Can't we parse each method sequentially instead? and not have to
+                // iterate again all over here?
+                for method in seq_methods {
+                    match (constructor.is_some(), set_up.is_some(), &method.r#type()) {
+                        (false, _, MethodType::Constructor) => constructor = Some(method),
+                        (_, false, MethodType::SetUp) => set_up = Some(method),
+                        (true, _, MethodType::Constructor) | (_, true, MethodType::SetUp) => {
+                            return Err(serde::de::Error::custom(format!(
+                                "Abi can only have one Constructor and one SetUp function"
+                            )))
+                        }
+                        (_, _, _) => methods.push(method),
+                    }
+                }
+
+                Ok(Abi {
+                    constructor,
+                    set_up,
+                    methods,
+                })
+            }
+        }
+        deserializer.deserialize_seq(AbiVisitor)
+    }
 }
 
 /// Method number indicator for calling Actor methods.
 pub type MethodNum = u64;
 
 /// [`Method`] describes an exposed method from an actor entrypoint.
-#[derive(Serialize_tuple, Clone, Debug, PartialEq, Eq, PartialOrd, Ord)]
+#[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord)]
 pub struct Method {
-    #[serde(skip_serializing)]
     number: MethodNum,
     name: String,
-    #[serde(skip_serializing)]
     r#type: MethodType,
 }
 
@@ -109,7 +199,6 @@ impl Method {
 
 /// Implement custom deserialization method for [`Method`] as we expect the bytes to be deserialized to only contain
 /// the `name` and not the `number` property that is generated at deserialization time.
-// TODO we could try to simplify our deserialization process in the future.
 impl<'de> serde::de::Deserialize<'de> for Method {
     fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
     where
@@ -211,6 +300,8 @@ mod test {
         let test_transfer_fail_name = String::from("TestFailTransfer");
 
         let abi = Abi {
+            constructor: None,
+            set_up: None,
             methods: vec![
                 Method {
                     number: derive_method_num(&test_transfer_name).unwrap(),
@@ -224,6 +315,7 @@ mod test {
                 },
             ],
         };
+
         let serialized_abi: Vec<u8> = vec![
             129, 130, 129, 108, 84, 101, 115, 116, 84, 114, 97, 110, 115, 102, 101, 114, 129, 112,
             84, 101, 115, 116, 70, 97, 105, 108, 84, 114, 97, 110, 115, 102, 101, 114,
@@ -245,6 +337,8 @@ mod test {
         let test_transfer_fail_name = String::from("testFailTransfer");
 
         let abi = Abi {
+            constructor: None,
+            set_up: None,
             methods: vec![
                 Method {
                     number: derive_method_num(&test_transfer_name).unwrap(),
