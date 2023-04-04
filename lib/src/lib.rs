@@ -23,7 +23,7 @@ use fvm_shared::{
     version::NetworkVersion,
 };
 
-use error::Error;
+use error::{Error, WrapFVMError};
 use state_tree::{BuiltInActors, StateTree};
 
 mod error;
@@ -189,8 +189,6 @@ impl Tester {
         test_actors: &'a [WasmActor],
         stream_results: Option<Sender<(&'a WasmActor, TestResult<'a>)>>,
     ) -> Result<Vec<TestActorResults<'a>>, Error> {
-        // TODO: Should we clone the `StateTree` before each test run,
-        // and make our `Tester` stateless?
         let target = self
             .target_actor
             .as_ref()
@@ -222,9 +220,53 @@ impl Tester {
                     }
                 };
 
-                let root = self.state_tree.flush();
-
                 log::info!("Testing Actor {}", target.name);
+
+                let root = self.state_tree.flush();
+                let blockstore = self.state_tree.store().clone();
+                let mut executor = Self::new_executor(blockstore, root, self.builtin_actors.root);
+
+                // Run the constructor if it exists.
+                if let Some(constructor) = test_actor.abi().constructor() {
+                    let message = Message {
+                        from: self.account.1,
+                        to: test_address,
+                        gas_limit: 1000000000,
+                        method_num: constructor.number(),
+                        params: target_id.clone().into(),
+                        ..Message::default()
+                    };
+                    if let Err(err) = executor
+                        .execute_message(message, ApplyKind::Explicit, 100)
+                        .setting_err("Could not run Constructor")
+                    {
+                        return TestActorResults {
+                            test_actor,
+                            results: Err(err),
+                        };
+                    }
+                }
+
+                // Run SetUp if it exists.
+                if let Some(set_up) = test_actor.abi().set_up() {
+                    let message = Message {
+                        from: self.account.1,
+                        to: test_address,
+                        gas_limit: 1000000000,
+                        method_num: set_up.number(),
+                        params: target_id.clone().into(),
+                        ..Message::default()
+                    };
+                    if let Err(err) = executor
+                        .execute_message(message, ApplyKind::Explicit, 100)
+                        .setting_err("Could not run SetUp")
+                    {
+                        return TestActorResults {
+                            test_actor,
+                            results: Err(err),
+                        };
+                    }
+                }
 
                 // TODO concurrent testing
                 // We'll be able to use thread to do concurrent testing once we set the Engine Pool with more than
@@ -239,10 +281,11 @@ impl Tester {
                             .methods
                             .iter()
                             .map(|method| {
-                                let blockstore = self.state_tree.store().clone();
-
-                                let mut executor =
-                                    Self::new_executor(blockstore, root, self.builtin_actors.root);
+                                // let mut executor = Self::new_executor(
+                                //     blockstore.clone(),
+                                //     root,
+                                //     self.builtin_actors.root,
+                                // );
 
                                 let message = Message {
                                     from: self.account.1,
