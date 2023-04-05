@@ -9,7 +9,7 @@ edition = "2021"
 actors-v10 = { package = "fil_builtin_actors_bundle", git = "https://github.com/filecoin-project/builtin-actors", rev = "39571e2" }
 fil_actor_account_v10 = "1.0.0"
 fil_actor_cron_v10 = "1.0.0"
-fil_actor_datacap_v10 = { git = "https://github.com/ChainSafe/fil-actor-states", branch = "main" }
+fil_actor_datacap_v10 = "1.0.0"
 fil_actor_init_v10 = "1.0.0"
 fil_actor_market_v10 = "1.0.0"
 fil_actor_miner_v10 = "1.0.0"
@@ -17,9 +17,9 @@ fil_actor_multisig_v10 = "1.0.0"
 fil_actor_paych_v10 = "1.0.0"
 fil_actor_power_v10 = "1.0.0"
 fil_actor_reward_v10 = "1.0.0"
-fil_actor_system_v10 = { git = "https://github.com/ChainSafe/fil-actor-states", branch = "main" }
-fil_actor_verifreg_v10 = { git = "https://github.com/ChainSafe/fil-actor-states", branch = "main" }
-fil_actor_ethaccount_v10 = { git = "https://github.com/ChainSafe/fil-actor-states", branch = "main" }
+fil_actor_system_v10 = "1.0.0"
+fil_actor_verifreg_v10 = "1.0.0"
+fil_actor_ethaccount_v10 = "1.0.0"
 fil_actors_runtime_v10 = "1.0.0"
 
 fvm_ipld_blockstore = { version = "0.1.1" }

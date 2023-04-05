@@ -490,7 +490,7 @@ dependencies = [
 name = "builtin_test_actor"
 version = "0.1.0"
 dependencies = [
- "fil_actors_runtime_v10 1.0.0 (registry+https://github.com/rust-lang/crates.io-index)",
+ "fil_actors_runtime_v10",
  "frc42_dispatch",
  "fvm_ipld_encoding 0.3.3",
  "fvm_sdk 3.0.0",
@@ -1361,9 +1361,10 @@ dependencies = [
 [[package]]
 name = "fil_actor_datacap_v10"
 version = "1.0.0"
-source = "git+https://github.com/ChainSafe/fil-actor-states?branch=main#1700628fece5ac91cf32b7d61e65a2b9d73d219e"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "ce1f4d418fe7b1f5fadc0614b62fb31e842f25ccd4e53184a604d19a645b60ad"
 dependencies = [
- "fil_actors_runtime_v10 1.0.0 (git+https://github.com/ChainSafe/fil-actor-states?branch=main)",
+ "fil_actors_runtime_v10",
  "frc42_dispatch",
  "frc46_token 3.1.0",
  "fvm_ipld_blockstore",
@@ -1415,7 +1416,8 @@ dependencies = [
 [[package]]
 name = "fil_actor_ethaccount_v10"
 version = "1.0.0"
-source = "git+https://github.com/ChainSafe/fil-actor-states?branch=main#1700628fece5ac91cf32b7d61e65a2b9d73d219e"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "43680472c5351870e2705d9f992e415d8b9ca81cd84fb31e4f99153271a1e606"
 dependencies = [
  "fvm_shared 3.1.0",
  "num-derive",
@@ -1474,7 +1476,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "31cf353d310f37ff152b49ef6eb3a1a734e0e193ed7c44f50c8eae7034d054c1"
 dependencies = [
  "cid",
- "fil_actors_runtime_v10 1.0.0 (registry+https://github.com/rust-lang/crates.io-index)",
+ "fil_actors_runtime_v10",
  "frc42_dispatch",
  "fvm_ipld_blockstore",
  "fvm_ipld_encoding 0.3.3",
@@ -1514,7 +1516,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "e023cdd8b8e0d39bdbbe3629dc761f2295bba792c7e57c8bf0ff356d88e4ab60"
 dependencies = [
  "cid",
- "fil_actors_runtime_v10 1.0.0 (registry+https://github.com/rust-lang/crates.io-index)",
+ "fil_actors_runtime_v10",
  "frc42_dispatch",
  "fvm_ipld_blockstore",
  "fvm_ipld_encoding 0.3.3",
@@ -1559,7 +1561,7 @@ checksum = "888cfc1da1e748656ed9dfe8cf19e0e434d1d4050e2caa64f12a4d3ec4c9a58f"
 dependencies = [
  "anyhow",
  "cid",
- "fil_actors_runtime_v10 1.0.0 (registry+https://github.com/rust-lang/crates.io-index)",
+ "fil_actors_runtime_v10",
  "frc42_dispatch",
  "fvm_ipld_amt 0.5.1",
  "fvm_ipld_bitfield",
@@ -1603,7 +1605,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "e5033cb154bc1fa54f5849d8d56553ba3bb777a6cb65ed360aed64bb064deade"
 dependencies = [
  "cid",
- "fil_actors_runtime_v10 1.0.0 (registry+https://github.com/rust-lang/crates.io-index)",
+ "fil_actors_runtime_v10",
  "frc42_dispatch",
  "fvm_ipld_blockstore",
  "fvm_ipld_encoding 0.3.3",
@@ -1683,7 +1685,7 @@ checksum = "5956a2e9ce0e16d046dab721d77cd8877de8571dd2c14394bf57f62b835bdba1"
 dependencies = [
  "anyhow",
  "cid",
- "fil_actors_runtime_v10 1.0.0 (registry+https://github.com/rust-lang/crates.io-index)",
+ "fil_actors_runtime_v10",
  "frc42_dispatch",
  "fvm_ipld_blockstore",
  "fvm_ipld_encoding 0.3.3",
@@ -1745,7 +1747,8 @@ dependencies = [
 [[package]]
 name = "fil_actor_system_v10"
 version = "1.0.0"
-source = "git+https://github.com/ChainSafe/fil-actor-states?branch=main#1700628fece5ac91cf32b7d61e65a2b9d73d219e"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "38c10a8bb4b1b1d3c321dc52332d30fa967e61689fe715f639de10d3a0c9e65d"
 dependencies = [
  "cid",
  "fvm_ipld_encoding 0.3.3",
@@ -1780,10 +1783,11 @@ dependencies = [
 [[package]]
 name = "fil_actor_verifreg_v10"
 version = "1.0.0"
-source = "git+https://github.com/ChainSafe/fil-actor-states?branch=main#1700628fece5ac91cf32b7d61e65a2b9d73d219e"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "74ea02fc52c01628bdcf1bb9aaa86b1b27e442d067bdaa96a874cfe307741ffd"
 dependencies = [
  "cid",
- "fil_actors_runtime_v10 1.0.0 (git+https://github.com/ChainSafe/fil-actor-states?branch=main)",
+ "fil_actors_runtime_v10",
  "frc42_dispatch",
  "fvm_ipld_blockstore",
  "fvm_ipld_encoding 0.3.3",
@@ -1842,30 +1846,6 @@ name = "fil_actors_runtime_v10"
 version = "1.0.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "bf58b5d04fe320d9fe29c6cb5911b4115aad9e72ee9afefa88442d1b21189989"
-dependencies = [
- "anyhow",
- "cid",
- "fvm_ipld_amt 0.5.1",
- "fvm_ipld_blockstore",
- "fvm_ipld_encoding 0.3.3",
- "fvm_ipld_hamt 0.6.1",
- "fvm_shared 3.1.0",
- "multihash",
- "num-bigint",
- "num-derive",
- "num-traits",
- "paste",
- "serde",
- "serde_repr",
- "sha2 0.10.6",
- "thiserror",
- "unsigned-varint",
-]
-
-[[package]]
-name = "fil_actors_runtime_v10"
-version = "1.0.0"
-source = "git+https://github.com/ChainSafe/fil-actor-states?branch=main#1700628fece5ac91cf32b7d61e65a2b9d73d219e"
 dependencies = [
  "anyhow",
  "cid",
@@ -2941,7 +2921,7 @@ dependencies = [
  "fil_actor_reward_v10",
  "fil_actor_system_v10",
  "fil_actor_verifreg_v10",
- "fil_actors_runtime_v10 1.0.0 (registry+https://github.com/rust-lang/crates.io-index)",
+ "fil_actors_runtime_v10",
  "fil_builtin_actors_bundle",
  "futures",
  "fvm_ipld_blockstore",
