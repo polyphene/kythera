@@ -4,8 +4,11 @@ use std::sync::mpsc::Sender;
 // SPDX-License-Identifier: Apache-2.0, MIT
 use cid::Cid;
 
-pub use kythera_common::abi::{pascal_case_split, Abi};
-use kythera_common::abi::{Method, MethodType};
+pub use kythera_common::{
+    abi::{pascal_case_split, Abi, Method, MethodType},
+    from_slice, to_vec,
+};
+
 use kythera_fvm::{
     engine::EnginePool,
     executor::{ApplyKind, ApplyRet, Executor, KytheraExecutor},
@@ -68,6 +71,11 @@ impl WasmActor {
     /// Get the WebAssembly Actor bytecode.
     pub fn code(&self) -> &[u8] {
         &self.bytecode
+    }
+
+    /// Get the Actor Abi.
+    pub fn abi(&self) -> &Abi {
+        &self.abi
     }
 }
 

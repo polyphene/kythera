@@ -20,6 +20,7 @@ anyhow = "1.0.69"
 clap = { version = "4.1.8", features = ["derive"] }
 log = "0.4.17"
 kythera-lib = { version = "0.1.0", path = "../lib" }
+thiserror = "1.0.39"
 walkdir = "2.3.3"
 wat = "1.0.61"
 
