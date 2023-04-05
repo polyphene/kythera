@@ -375,7 +375,8 @@ mod tests {
             .has(&*builtins_actors.manifest.get_eam_code())
             .unwrap());
 
-        assert_eq!(tester.account.0, 100);
+        // Expect actor Id to be 102 as we deployed verified registry signer & multisig previously
+        assert_eq!(tester.account.0, 102);
 
         assert!(tester.target_actor.is_none());
     }

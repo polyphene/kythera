@@ -11,16 +11,22 @@ use futures::executor::block_on;
 use fvm_ipld_blockstore::{Block, Blockstore, MemoryBlockstore};
 use fvm_ipld_car::load_car_unchecked;
 use fvm_ipld_encoding::{serde::Serialize, CborStore};
-use fvm_shared::{address::Address, econ::TokenAmount, state::StateTreeVersion, ActorID, IPLD_RAW};
-use kythera_fvm::{account_actor, init_actor, machine::Manifest, state_tree::ActorState, Account};
+use fvm_shared::{
+    address::Address, econ::TokenAmount, state::StateTreeVersion, ActorID, HAMT_BIT_WIDTH, IPLD_RAW,
+};
+use kythera_fvm::{account_actor, machine::Manifest, state_tree::ActorState, Account};
 use libsecp256k1::{PublicKey, SecretKey};
 use rand::SeedableRng;
 
-use fil_actors_runtime::runtime::builtins::Type;
-use fil_actors_runtime::{INIT_ACTOR_ID, SYSTEM_ACTOR_ID};
+use fil_actors_runtime_v10::runtime::builtins::Type;
+use fil_actors_runtime_v10::{
+    make_empty_map, BURNT_FUNDS_ACTOR_ADDR, BURNT_FUNDS_ACTOR_ID, CRON_ACTOR_ID,
+    DATACAP_TOKEN_ACTOR_ID, INIT_ACTOR_ID, REWARD_ACTOR_ID, STORAGE_MARKET_ACTOR_ADDR,
+    STORAGE_MARKET_ACTOR_ID, STORAGE_POWER_ACTOR_ADDR, STORAGE_POWER_ACTOR_ID, SYSTEM_ACTOR_ID,
+    VERIFIED_REGISTRY_ACTOR_ADDR, VERIFIED_REGISTRY_ACTOR_ID,
+};
 use fvm_shared::bigint::Zero;
 use fvm_shared::sector::StoragePower;
-use kythera_fvm::system_actor::State;
 
 const STATE_TREE_VERSION: StateTreeVersion = StateTreeVersion::V5;
 
@@ -88,32 +94,26 @@ impl StateTree {
     /// Load the built-in actors into the `Blockstore`.
     /// And activate them on the `StateTree`.
     pub fn load_builtin_actors(&mut self) -> BuiltInActors {
-        let blockstore = self.inner.store();
         // Load the built-in Actors
-        let builtin_actors =
-            block_on(async { load_car_unchecked(blockstore, actors_v10::BUNDLE_CAR).await })
-                .expect("Should be able to import built-in Actors")[0];
+        let builtin_actors = block_on(async {
+            load_car_unchecked(self.inner.store(), actors_v10::BUNDLE_CAR).await
+        })
+        .expect("Should be able to import built-in Actors")[0];
 
-        let (version, root) = blockstore
+        let (version, root) = self
+            .inner
+            .store()
             .get_cbor::<(u32, Cid)>(&builtin_actors)
             .expect("Should be able to decode the built-in Actor CBOR")
             .expect("There should be manifest information for built-in Actor Cid");
 
-        let manifest = Manifest::load(blockstore, &root, version)
+        let manifest = Manifest::load(self.inner.store(), &root, version)
             .expect("Should be able to load built-in Actor manifest");
 
-        // Prepare actor states.
-        let sys_state = State {
+        // Set system actor.
+        let sys_state = fil_actor_system_v10::State {
             builtin_actors: root,
         };
-        let init_state = fil_actor_init::State::new(&blockstore, "test".to_string())
-            .expect("Should be able to initialize Init Actor state");
-        //let init_state = init_actor::State::new_test(&blockstore);
-        let reward_state = fil_actor_reward::State::new(StoragePower::zero());
-
-        dbg!(&reward_state);
-
-        // Set system actor.
         self.set_actor(
             "System Actor",
             sys_state,
@@ -127,6 +127,8 @@ impl StateTree {
         .expect("Should be able to set the System Actor");
 
         // Set init actor.
+        let init_state = fil_actor_init_v10::State::new(self.inner.store(), "test".to_string())
+            .expect("Should be able to initialize Init Actor state");
         self.set_actor(
             "Init Actor",
             init_state,
@@ -138,6 +140,184 @@ impl StateTree {
             TokenAmount::zero(),
         )
         .expect("Should be able to set the Init Actor");
+
+        // Set reward actor.
+        let reward_state = fil_actor_reward_v10::State::new(StoragePower::zero());
+        self.set_actor(
+            "Reward Actor",
+            reward_state,
+            *manifest
+                .code_by_id(Type::Reward as u32)
+                .expect("Should be able to get Reward Actor code from manifest"),
+            REWARD_ACTOR_ID,
+            0,
+            TokenAmount::from_whole(1_100_000_000),
+        )
+        .expect("Should be able to set the Reward Actor");
+
+        // Set cron actor.
+        let cron_state = fil_actor_cron_v10::State {
+            entries: vec![
+                fil_actor_cron_v10::Entry {
+                    receiver: STORAGE_POWER_ACTOR_ADDR,
+                    method_num: fil_actor_power_v10::Method::OnEpochTickEnd as u64,
+                },
+                fil_actor_cron_v10::Entry {
+                    receiver: STORAGE_MARKET_ACTOR_ADDR,
+                    method_num: fil_actor_market_v10::Method::CronTick as u64,
+                },
+            ],
+        };
+        self.set_actor(
+            "Cron Actor",
+            cron_state,
+            *manifest
+                .code_by_id(Type::Cron as u32)
+                .expect("Should be able to get Cron Actor code from manifest"),
+            CRON_ACTOR_ID,
+            0,
+            TokenAmount::zero(),
+        )
+        .expect("Should be able to set the Cron Actor");
+
+        // Set power actor.
+        let power_state = fil_actor_power_v10::State::new(self.inner.store())
+            .expect("Should be able to initialize Power Actor state");
+        self.set_actor(
+            "Storage Power Actor",
+            power_state,
+            *manifest
+                .code_by_id(Type::Power as u32)
+                .expect("Should be able to get Storage Power Actor code from manifest"),
+            STORAGE_POWER_ACTOR_ID,
+            0,
+            TokenAmount::zero(),
+        )
+        .expect("Should be able to set the Storage Power Actor");
+
+        // Set market actor.
+        let market_state = fil_actor_market_v10::State::new(self.inner.store())
+            .expect("Should be able to initialize Market Actor state");
+        self.set_actor(
+            "Storage Market Actor",
+            market_state,
+            *manifest
+                .code_by_id(Type::Market as u32)
+                .expect("Should be able to get Storage Market Actor code from manifest"),
+            STORAGE_MARKET_ACTOR_ID,
+            0,
+            TokenAmount::zero(),
+        )
+        .expect("Should be able to set the Storage Market Actor");
+
+        // Deploy multisig and a signer to act as verified registry root.
+        // Initialize signer address.
+        let verified_reg_signer_address =
+            Address::new_bls(&[200; fvm_shared::address::BLS_PUB_LEN])
+                .expect("Should be able to generate verified registry multisig signer address");
+        let verified_reg_signer_id = self
+            .inner
+            .register_new_address(&verified_reg_signer_address)
+            .expect("Should be able to register verified registry multisig signer address");
+        // Initialize signer state.
+        let verified_reg_signer_state = fil_actor_account_v10::State {
+            address: verified_reg_signer_address,
+        };
+        dbg!(verified_reg_signer_id);
+        // Set signer actor.
+        self.set_actor(
+            "Verified Registry Signer",
+            verified_reg_signer_state,
+            *manifest
+                .code_by_id(Type::Account as u32)
+                .expect("Should be able to get Account Actor code from manifest"),
+            verified_reg_signer_id,
+            0,
+            TokenAmount::zero(),
+        )
+        .expect("Should be able to set the Verified Registry Signer");
+
+        // Initialize verified registry root address.
+        let empty_root = make_empty_map::<_, ()>(self.inner.store(), HAMT_BIT_WIDTH)
+            .flush()
+            .expect("Should be able to generate an empty root CID");
+        let verified_reg_root_address = Address::new_actor(b"VerifiedRegistryRoot");
+        let verified_reg_root_id = self
+            .inner
+            .register_new_address(&verified_reg_root_address)
+            .expect("Should be able to register verified registry multisig root address");
+        // Initialize verified registry root state.
+        let verified_reg_root_state = fil_actor_multisig_v10::State {
+            signers: vec![Address::new_id(verified_reg_signer_id)],
+            num_approvals_threshold: 1,
+            next_tx_id: Default::default(),
+            initial_balance: Default::default(),
+            start_epoch: 0,
+            unlock_duration: 0,
+            pending_txs: empty_root,
+        };
+        // Set verified registry root.
+        self.set_actor(
+            "Verified Registry Root",
+            verified_reg_root_state,
+            *manifest
+                .code_by_id(Type::Multisig as u32)
+                .expect("Should be able to get Multisig Actor code from manifest"),
+            verified_reg_root_id,
+            0,
+            TokenAmount::zero(),
+        )
+        .expect("Should be able to set the Verified Registry Root");
+
+        // Set verified registry itself.
+        let verified_reg_state = fil_actor_verifreg_v10::State::new(
+            self.inner.store(),
+            Address::new_id(verified_reg_root_id),
+        )
+        .expect("Should be able to initialize Verified Registry Actor state");
+        self.set_actor(
+            "Verified Registry Actor",
+            verified_reg_state,
+            *manifest
+                .code_by_id(Type::VerifiedRegistry as u32)
+                .expect("Should be able to get Verified Registry Actor code from manifest"),
+            VERIFIED_REGISTRY_ACTOR_ID,
+            0,
+            TokenAmount::zero(),
+        )
+        .expect("Should be able to set the Verified Registry Actor");
+
+        // Set datacap actor.
+        let datacap_state =
+            fil_actor_datacap_v10::State::new(self.inner.store(), VERIFIED_REGISTRY_ACTOR_ADDR)
+                .expect("Should be able to initialize Datacap Actor state");
+        self.set_actor(
+            "Datacap Actor",
+            datacap_state,
+            *manifest
+                .code_by_id(Type::DataCap as u32)
+                .expect("Should be able to get Datacap Actor code from manifest"),
+            DATACAP_TOKEN_ACTOR_ID,
+            0,
+            TokenAmount::zero(),
+        )
+        .expect("Should be able to set the Datacap Actor");
+
+        // Set burnt funds actor.
+        let burnt_state = fil_actor_account_v10::State {
+            address: BURNT_FUNDS_ACTOR_ADDR,
+        };
+        self.set_actor(
+            "Burnt Funds Actor",
+            burnt_state,
+            *manifest
+                .code_by_id(Type::DataCap as u32)
+                .expect("Should be able to get Burnt Funds Actor code from manifest"),
+            BURNT_FUNDS_ACTOR_ID,
+            0,
+            TokenAmount::zero(),
+        )
+        .expect("Should be able to set the Burnt Funds Actor");
 
         BuiltInActors {
             root: builtin_actors,
