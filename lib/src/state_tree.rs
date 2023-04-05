@@ -223,7 +223,7 @@ impl StateTree {
         let verified_reg_signer_state = fil_actor_account_v10::State {
             address: verified_reg_signer_address,
         };
-        dbg!(verified_reg_signer_id);
+
         // Set signer actor.
         self.set_actor(
             "Verified Registry Signer",
@@ -311,7 +311,7 @@ impl StateTree {
             "Burnt Funds Actor",
             burnt_state,
             *manifest
-                .code_by_id(Type::DataCap as u32)
+                .code_by_id(Type::Account as u32)
                 .expect("Should be able to get Burnt Funds Actor code from manifest"),
             BURNT_FUNDS_ACTOR_ID,
             0,
