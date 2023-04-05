@@ -118,9 +118,9 @@ impl<'de> serde::Deserialize<'de> for Abi {
                         (false, _, MethodType::Constructor) => constructor = Some(method),
                         (_, false, MethodType::SetUp) => set_up = Some(method),
                         (true, _, MethodType::Constructor) | (_, true, MethodType::SetUp) => {
-                            return Err(serde::de::Error::custom(format!(
-                                "Abi can only have one Constructor and one SetUp function"
-                            )))
+                            return Err(serde::de::Error::custom(
+                                "Abi can only have one Constructor and one SetUp function",
+                            ))
                         }
                         (_, _, _) => methods.push(method),
                     }

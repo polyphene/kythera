@@ -13,7 +13,7 @@ use kythera_fvm::{
     engine::EnginePool,
     executor::{ApplyKind, ApplyRet, Executor, KytheraExecutor},
     externs::FakeExterns,
-    machine::{KytheraMachine, NetworkConfig},
+    machine::{KytheraMachine, Machine, NetworkConfig},
     Account,
 };
 
@@ -255,6 +255,7 @@ impl Tester {
                         gas_limit: 1000000000,
                         method_num: set_up.number(),
                         params: target_id.clone().into(),
+                        sequence: 1,
                         ..Message::default()
                     };
                     if let Err(err) = executor
@@ -267,6 +268,16 @@ impl Tester {
                         };
                     }
                 }
+
+                let root = executor
+                    .flush()
+                    .expect("Should be able to flush the executor");
+
+                let blockstore = executor
+                    .into_machine()
+                    .expect("Machine should exist at this point")
+                    .into_store()
+                    .into_inner();
 
                 // TODO concurrent testing
                 // We'll be able to use thread to do concurrent testing once we set the Engine Pool with more than
@@ -281,11 +292,11 @@ impl Tester {
                             .methods
                             .iter()
                             .map(|method| {
-                                // let mut executor = Self::new_executor(
-                                //     blockstore.clone(),
-                                //     root,
-                                //     self.builtin_actors.root,
-                                // );
+                                let mut executor = Self::new_executor(
+                                    blockstore.clone(),
+                                    root,
+                                    self.builtin_actors.root,
+                                );
 
                                 let message = Message {
                                     from: self.account.1,

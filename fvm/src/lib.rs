@@ -22,9 +22,7 @@ pub mod executor {
 }
 
 pub mod machine {
-    pub use fvm::machine::DefaultMachine as KytheraMachine;
-    pub use fvm::machine::Manifest;
-    pub use fvm::machine::NetworkConfig;
+    pub use fvm::machine::{DefaultMachine as KytheraMachine, Machine, Manifest, NetworkConfig};
 }
 
 pub mod state_tree {
