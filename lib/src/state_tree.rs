@@ -12,14 +12,15 @@ use fvm_ipld_blockstore::{Block, Blockstore, MemoryBlockstore};
 use fvm_ipld_car::load_car_unchecked;
 use fvm_ipld_encoding::{serde::Serialize, CborStore};
 use fvm_shared::{address::Address, econ::TokenAmount, state::StateTreeVersion, ActorID, IPLD_RAW};
-use kythera_fvm::{
-    account_actor, init_actor, machine::Manifest, state_tree::ActorState, system_actor, Account,
-};
+use kythera_fvm::{account_actor, init_actor, machine::Manifest, state_tree::ActorState, Account};
 use libsecp256k1::{PublicKey, SecretKey};
 use rand::SeedableRng;
 
-use fil_actors_runtime::{runtime::builtins::Type, INIT_ACTOR_ID, SYSTEM_ACTOR_ID};
+use fil_actors_runtime::runtime::builtins::Type;
+use fil_actors_runtime::{INIT_ACTOR_ID, SYSTEM_ACTOR_ID};
 use fvm_shared::bigint::Zero;
+use fvm_shared::sector::StoragePower;
+use kythera_fvm::system_actor::State;
 
 const STATE_TREE_VERSION: StateTreeVersion = StateTreeVersion::V5;
 
@@ -101,37 +102,42 @@ impl StateTree {
         let manifest = Manifest::load(blockstore, &root, version)
             .expect("Should be able to load built-in Actor manifest");
 
-        let init_state = init_actor::State::new_test(&blockstore);
+        // Prepare actor states.
+        let sys_state = State {
+            builtin_actors: root,
+        };
+        let init_state = fil_actor_init::State::new(&blockstore, "test".to_string())
+            .expect("Should be able to initialize Init Actor state");
+        //let init_state = init_actor::State::new_test(&blockstore);
+        let reward_state = fil_actor_reward::State::new(StoragePower::zero());
+
+        dbg!(&reward_state);
 
         // Set system actor.
         self.set_actor(
             "System Actor",
-            fil_actor_system::State {
-                builtin_actors: root,
-            },
+            sys_state,
             *manifest
                 .code_by_id(Type::System as u32)
-                .expect("Should be able to get system Actor code from manifest"),
+                .expect("Should be able to get System Actor code from manifest"),
             SYSTEM_ACTOR_ID,
             0,
             TokenAmount::zero(),
         )
-        .expect("Should be able to set the system Actor");
+        .expect("Should be able to set the System Actor");
 
-        // Set init actor
+        // Set init actor.
         self.set_actor(
             "Init Actor",
             init_state,
             *manifest
                 .code_by_id(Type::Init as u32)
-                .expect("Should be able to get init Actor code from manifest"),
+                .expect("Should be able to get Init Actor code from manifest"),
             INIT_ACTOR_ID,
             0,
             TokenAmount::zero(),
         )
         .expect("Should be able to set the Init Actor");
-
-        // Set reward actor
 
         BuiltInActors {
             root: builtin_actors,
