@@ -236,14 +236,26 @@ impl Tester {
                         params: target_id.clone().into(),
                         ..Message::default()
                     };
-                    if let Err(err) = executor
+
+                    match executor
                         .execute_message(message, ApplyKind::Explicit, 100)
                         .setting_err("Could not run Constructor")
                     {
-                        return TestActorResults {
-                            test_actor,
-                            results: Err(err),
-                        };
+                        Ok(apply_ret) => {
+                            if apply_ret.msg_receipt.exit_code != ExitCode::OK {
+                                // TODO we should properly handle constructor not running by returning
+                                // directly. We need to pass the apply ret there but constructor is not a
+                                // test. This will have to be figured out how. Anyway apply ret of constructor
+                                // should be returned.
+                                panic!("Constructor should run")
+                            }
+                        }
+                        Err(err) => {
+                            return TestActorResults {
+                                test_actor,
+                                results: Err(err),
+                            }
+                        }
                     }
                 }
 
@@ -304,6 +316,9 @@ impl Tester {
                                     gas_limit: 1000000000,
                                     method_num: method.number(),
                                     params: target_id.clone().into(),
+                                    // TODO sequence hard coded here for constructor test to work. This should be dynamic
+                                    // based on previous messages (1 if either constructor or setup is called, 2 if both have been called)
+                                    sequence: 1,
                                     ..Message::default()
                                 };
 
@@ -355,7 +370,7 @@ impl Default for Tester {
 #[cfg(test)]
 mod tests {
     use fvm_shared::error::ExitCode;
-    use kythera_test_actors::wasm_bin::BASIC_TEST_ACTOR_BINARY;
+    use kythera_test_actors::wasm_bin::{BASIC_TEST_ACTOR_BINARY, CONSTRUCTOR_TEST_ACTOR_BINARY};
 
     use super::*;
     use kythera_common::abi::{Abi, Method};
@@ -505,6 +520,60 @@ mod tests {
                             _ => panic!("test against basic test actor should pass"),
                         },
                     )
+            }
+        }
+    }
+
+    #[test]
+    fn test_constructor_called() {
+        // Instantiate tester
+        let mut tester = Tester::new();
+
+        // Set target actor
+        let target_wasm_bin = wat::parse_str(TARGET_WAT).unwrap();
+        let target_abi = Abi {
+            constructor: None,
+            set_up: None,
+            methods: vec![],
+        };
+        let target_actor = WasmActor::new(String::from("Target"), target_wasm_bin, target_abi);
+
+        // Set test actor
+        let test_wasm_bin: Vec<u8> = Vec::from(CONSTRUCTOR_TEST_ACTOR_BINARY);
+        let test_abi = Abi {
+            constructor: Some(Method::new_from_name("Constructor").unwrap()),
+            set_up: None,
+            methods: vec![Method::new_from_name("TestConstructor").unwrap()],
+        };
+        let test_actor = WasmActor::new(String::from("Constructor Test"), test_wasm_bin, test_abi);
+
+        match tester.deploy_target_actor(target_actor) {
+            Err(_) => {
+                panic!("Could not set target Actor when testing if Constructor is properly called")
+            }
+            _ => {}
+        }
+
+        match tester.test(&[test_actor.clone()], None) {
+            Err(_) => {
+                panic!("Could not run test when testing Tester")
+            }
+            Ok(test_res) => {
+                assert_eq!(test_res.len(), 1usize);
+                assert_eq!(test_res[0].results.as_ref().unwrap().len(), 1usize);
+                assert_eq!(test_res[0].test_actor, &test_actor);
+                dbg!(&test_res[0].results);
+                test_res[0]
+                    .results
+                    .as_ref()
+                    .unwrap()
+                    .iter()
+                    .for_each(|result| match (result.method().r#type(), result.ret()) {
+                        (MethodType::Test, TestResultType::Passed(apply_ret)) => {
+                            assert_eq!(apply_ret.msg_receipt.exit_code, ExitCode::OK);
+                        }
+                        _ => panic!("test against basic test actor should pass"),
+                    })
             }
         }
     }

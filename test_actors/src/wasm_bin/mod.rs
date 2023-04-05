@@ -15,3 +15,6 @@ macro_rules! wasm_bin {
 
 // Integration test actors.
 pub const BASIC_TEST_ACTOR_BINARY: &[u8] = include_bytes!(wasm_bin!("basic_test_actor"));
+pub const CONSTRUCTOR_TEST_ACTOR_BINARY: &[u8] =
+    include_bytes!(wasm_bin!("constructor_test_actor"));
+pub const SETUP_TEST_ACTOR_BINARY: &[u8] = include_bytes!(wasm_bin!("setup_test_actor"));

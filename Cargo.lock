@@ -710,6 +710,19 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "13418e745008f7349ec7e449155f419a61b92b58a99cc3616942b926825ec76b"
 
 [[package]]
+name = "constructor_test_actor"
+version = "0.1.0"
+dependencies = [
+ "cid",
+ "fvm_ipld_blockstore 0.1.1 (git+https://github.com/filecoin-project/ref-fvm.git)",
+ "fvm_ipld_encoding 0.3.3 (git+https://github.com/filecoin-project/ref-fvm.git)",
+ "fvm_sdk 3.0.0 (git+https://github.com/filecoin-project/ref-fvm.git)",
+ "fvm_shared 3.1.0",
+ "serde",
+ "serde_tuple",
+]
+
+[[package]]
 name = "convert_case"
 version = "0.4.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -3476,6 +3489,19 @@ dependencies = [
  "proc-macro2",
  "quote",
  "syn 1.0.109",
+]
+
+[[package]]
+name = "setup_test_actor"
+version = "0.1.0"
+dependencies = [
+ "cid",
+ "fvm_ipld_blockstore 0.1.1 (git+https://github.com/filecoin-project/ref-fvm.git)",
+ "fvm_ipld_encoding 0.3.3 (git+https://github.com/filecoin-project/ref-fvm.git)",
+ "fvm_sdk 3.0.0 (git+https://github.com/filecoin-project/ref-fvm.git)",
+ "fvm_shared 3.1.0",
+ "serde",
+ "serde_tuple",
 ]
 
 [[package]]

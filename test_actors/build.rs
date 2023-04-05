@@ -6,7 +6,11 @@ use std::path::Path;
 use std::process::{Command, Stdio};
 use std::thread;
 
-const ACTORS: &[&str] = &["basic_test_actor"];
+const ACTORS: &[&str] = &[
+    "basic_test_actor",
+    "constructor_test_actor",
+    "setup_test_actor",
+];
 
 fn main() -> Result<(), Box<dyn Error>> {
     // Cargo executable location.
