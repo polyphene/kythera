@@ -10,7 +10,7 @@ pub(crate) struct TestArgs {
     path: PathBuf,
 }
 
-/// Test
+/// Kythera cli test command.
 pub(crate) fn test(args: &TestArgs) -> anyhow::Result<()> {
     let tests = search_files(&args.path)?;
     for test in tests {
