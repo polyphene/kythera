@@ -1,0 +1,17 @@
+[package]
+name = "constructor_setup_test_actor"
+version = "0.1.0"
+edition = "2021"
+publish=false
+
+[target.'cfg(target_arch = "wasm32")'.dependencies]
+cid = { version = "0.8.5", default-features = false }
+fvm_ipld_blockstore = { git = "https://github.com/filecoin-project/ref-fvm.git", version = "0.1.1" }
+fvm_sdk = { git = "https://github.com/filecoin-project/ref-fvm.git", version = "3.0.0" }
+fvm_shared = { git = "https://github.com/filecoin-project/ref-fvm.git", version = "3.1.0" }
+fvm_ipld_encoding = { git = "https://github.com/filecoin-project/ref-fvm.git", version = "0.3.3" }
+serde = { version = "1.0.136", features = ["derive"] }
+serde_tuple = { version = "0.5.0" }
+
+[lib]
+crate-type = ["cdylib"]

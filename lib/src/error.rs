@@ -2,8 +2,14 @@
 // SPDX-License-Identifier: Apache-2.0, MIT
 
 /// Kythera lib errors.
+use kythera_fvm::executor::ApplyFailure;
+
 #[derive(Debug, thiserror::Error)]
 pub enum Error {
+    #[error("Constructor exit code was not ok")]
+    ConstructorError(Option<ApplyFailure>),
+    #[error("SetUp exit code was not ok")]
+    SetUpError(Option<ApplyFailure>),
     #[error("Main Actor not loaded")]
     MissingActor,
     #[error("Could not set Actor: {name} on the BlockStore")]

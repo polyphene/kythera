@@ -16,7 +16,7 @@ pub mod executor {
     use fvm::DefaultKernel;
 
     pub use fvm::executor::Executor;
-    pub use fvm::executor::{ApplyKind, ApplyRet};
+    pub use fvm::executor::{ApplyFailure, ApplyKind, ApplyRet};
     pub type KytheraExecutor<B, E> =
         DefaultExecutor<DefaultKernel<DefaultCallManager<KytheraMachine<B, E>>>>;
 }

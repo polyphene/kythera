@@ -52,7 +52,7 @@ impl Abi {
         self.constructor.as_ref()
     }
 
-    /// Get the `SetUp` method on the Abi if it exists.
+    /// Get the `Setup` method on the Abi if it exists.
     pub fn set_up(&self) -> Option<&Method> {
         self.set_up.as_ref()
     }
@@ -62,7 +62,7 @@ impl Abi {
     }
 }
 
-/// Custom implementation of [`Serialize`] so that we join `Constructor` and `SetUp`
+/// Custom implementation of [`Serialize`] so that we join `Constructor` and `Setup`
 /// into the rest of the methods.
 impl serde::Serialize for Abi {
     fn serialize<S>(&self, serializer: S) -> std::result::Result<S::Ok, S::Error>
@@ -83,7 +83,7 @@ impl serde::Serialize for Abi {
     }
 }
 
-/// Custom implementation of [`Deserialize`] so that we check for `Constructor` and `SetUp`
+/// Custom implementation of [`Deserialize`] so that we check for `Constructor` and `Setup`
 /// existence and assert there's only one of each.
 impl<'de> serde::Deserialize<'de> for Abi {
     fn deserialize<D>(deserializer: D) -> std::result::Result<Self, D::Error>
@@ -116,8 +116,8 @@ impl<'de> serde::Deserialize<'de> for Abi {
                 for method in seq_methods {
                     match (constructor.is_some(), set_up.is_some(), &method.r#type()) {
                         (false, _, MethodType::Constructor) => constructor = Some(method),
-                        (_, false, MethodType::SetUp) => set_up = Some(method),
-                        (true, _, MethodType::Constructor) | (_, true, MethodType::SetUp) => {
+                        (_, false, MethodType::Setup) => set_up = Some(method),
+                        (true, _, MethodType::Constructor) | (_, true, MethodType::Setup) => {
                             return Err(serde::de::Error::custom(
                                 "Abi can only have one Constructor and one SetUp function",
                             ))
@@ -153,7 +153,7 @@ pub struct Method {
 pub enum MethodType {
     Constructor,
     Entrypoint,
-    SetUp,
+    Setup,
     Test,
     TestFail,
 }
@@ -183,7 +183,7 @@ impl Method {
         let split = pascal_case_split(&name);
         let r#type = match &split[..] {
             ["Constructor", ..] => MethodType::Constructor,
-            ["Set", "Up", ..] => MethodType::SetUp,
+            ["Setup", ..] => MethodType::Setup,
             ["Test", "Fail", ..] => MethodType::TestFail,
             ["Test", ..] => MethodType::Test,
             _ => MethodType::Entrypoint,
@@ -366,7 +366,6 @@ mod test {
         match crate::from_slice::<Abi>(&serialized_abi) {
             Ok(_) => panic!("Deserialization should fail"),
             Err(err) => {
-                dbg!(&err);
                 assert!(err
                     .to_string()
                     .contains("Couldn't deserialize method: testFailTransfer"));
@@ -389,8 +388,8 @@ mod test {
             MethodType::Constructor
         );
         assert_eq!(
-            Method::new_from_name("SetUp").unwrap().r#type,
-            MethodType::SetUp
+            Method::new_from_name("Setup").unwrap().r#type,
+            MethodType::Setup
         );
 
         assert!(Method::new_from_name("testOne").is_err());

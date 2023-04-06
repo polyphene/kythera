@@ -1,36 +1,23 @@
-use std::sync::mpsc::Sender;
-
 // Copyright 2023 Polyphene.
 // SPDX-License-Identifier: Apache-2.0, MIT
-use cid::Cid;
 
+use executor::Executor;
 pub use kythera_common::{
     abi::{pascal_case_split, Abi, Method, MethodType},
     from_slice, to_vec,
 };
 
-use kythera_fvm::{
-    engine::EnginePool,
-    executor::{ApplyKind, ApplyRet, Executor, KytheraExecutor},
-    externs::FakeExterns,
-    machine::{KytheraMachine, Machine, NetworkConfig},
-    Account,
-};
+use kythera_fvm::{executor::ApplyRet, Account};
+use std::sync::mpsc::Sender;
 
-use fvm_ipld_blockstore::Blockstore;
-use fvm_shared::{
-    address::Address, bigint::Zero, econ::TokenAmount, error::ExitCode, message::Message,
-    version::NetworkVersion,
-};
+use fvm_shared::{address::Address, bigint::Zero, econ::TokenAmount, error::ExitCode};
 
-use error::{Error, WrapFVMError};
+use error::Error;
 use state_tree::{BuiltInActors, StateTree};
 
 mod error;
+mod executor;
 mod state_tree;
-
-const NETWORK_VERSION: NetworkVersion = NetworkVersion::V18;
-const DEFAULT_BASE_FEE: u64 = 100;
 
 /// Main interface to test `Actor`s with Kythera.
 pub struct Tester {
@@ -42,6 +29,8 @@ pub struct Tester {
     account: Account,
     // The Target Actor to be tested.
     target_actor: Option<DeployedActor>,
+    // The Method message sequence number.
+    sequence: u64,
 }
 
 /// WebAssembly Actor.
@@ -136,36 +125,8 @@ impl Tester {
             state_tree,
             account,
             target_actor: None,
+            sequence: 0,
         }
-    }
-
-    /// Create a new `Executor` to test the provided test Actor.
-    fn new_executor<B: Blockstore + 'static>(
-        blockstore: B,
-        state_root: Cid,
-        builtin_actors: Cid,
-    ) -> KytheraExecutor<B, FakeExterns> {
-        let mut nc = NetworkConfig::new(NETWORK_VERSION);
-        nc.override_actors(builtin_actors);
-        nc.enable_actor_debugging();
-
-        let mut mc = nc.for_epoch(0, 0, state_root);
-        mc.set_base_fee(TokenAmount::from_atto(DEFAULT_BASE_FEE))
-            .enable_tracing();
-
-        let code_cids = vec![];
-
-        let engine = EnginePool::new_default((&mc.network.clone()).into())
-            .expect("Should be able to start EnginePool");
-        engine
-            .acquire()
-            .preload(&blockstore, &code_cids)
-            .expect("Should be able to preload Executor");
-
-        let machine = KytheraMachine::new(&mc, blockstore, FakeExterns::new())
-            .expect("Should be able to start KytheraMachine");
-
-        KytheraExecutor::new(engine, machine).expect("Should be able to start Executor")
     }
 
     /// Deploy the target Actor file into the `StateTree`.
@@ -179,6 +140,13 @@ impl Tester {
         });
 
         Ok(())
+    }
+
+    // Get and increment the next Actor sequence.
+    pub fn next_sequence(&mut self) -> u64 {
+        let sequence = self.sequence;
+        self.sequence = sequence + 1;
+        sequence
     }
 
     /// Test an Actor on a `MemoryBlockstore`.
@@ -224,30 +192,24 @@ impl Tester {
 
                 let root = self.state_tree.flush();
                 let blockstore = self.state_tree.store().clone();
-                let mut executor = Self::new_executor(blockstore, root, self.builtin_actors.root);
+                let mut executor = Executor::new(
+                    blockstore,
+                    root,
+                    self.builtin_actors.root,
+                    self.account.1,
+                    test_address,
+                    target_id.clone().into(),
+                );
 
                 // Run the constructor if it exists.
                 if let Some(constructor) = test_actor.abi().constructor() {
-                    let message = Message {
-                        from: self.account.1,
-                        to: test_address,
-                        gas_limit: 1000000000,
-                        method_num: constructor.number(),
-                        params: target_id.clone().into(),
-                        ..Message::default()
-                    };
-
-                    match executor
-                        .execute_message(message, ApplyKind::Explicit, 100)
-                        .setting_err("Could not run Constructor")
-                    {
+                    match executor.execute_method(constructor.number(), self.next_sequence()) {
                         Ok(apply_ret) => {
                             if apply_ret.msg_receipt.exit_code != ExitCode::OK {
-                                // TODO we should properly handle constructor not running by returning
-                                // directly. We need to pass the apply ret there but constructor is not a
-                                // test. This will have to be figured out how. Anyway apply ret of constructor
-                                // should be returned.
-                                panic!("Constructor should run")
+                                return TestActorResults {
+                                    test_actor,
+                                    results: Err(Error::ConstructorError(apply_ret.failure_info)),
+                                };
                             }
                         }
                         Err(err) => {
@@ -259,37 +221,30 @@ impl Tester {
                     }
                 }
 
-                // Run SetUp if it exists.
+                // Run Setup if it exists.
                 if let Some(set_up) = test_actor.abi().set_up() {
-                    let message = Message {
-                        from: self.account.1,
-                        to: test_address,
-                        gas_limit: 1000000000,
-                        method_num: set_up.number(),
-                        params: target_id.clone().into(),
-                        sequence: 1,
-                        ..Message::default()
-                    };
-                    if let Err(err) = executor
-                        .execute_message(message, ApplyKind::Explicit, 100)
-                        .setting_err("Could not run SetUp")
-                    {
-                        return TestActorResults {
-                            test_actor,
-                            results: Err(err),
-                        };
+                    match executor.execute_method(set_up.number(), self.next_sequence()) {
+                        Ok(apply_ret) => {
+                            if apply_ret.msg_receipt.exit_code != ExitCode::OK {
+                                return TestActorResults {
+                                    test_actor,
+                                    results: Err(Error::SetUpError(apply_ret.failure_info)),
+                                };
+                            }
+                        }
+                        Err(err) => {
+                            return TestActorResults {
+                                test_actor,
+                                results: Err(err),
+                            }
+                        }
                     }
                 }
 
-                let root = executor
-                    .flush()
-                    .expect("Should be able to flush the executor");
+                let (root, blockstore) = executor.into_store();
 
-                let blockstore = executor
-                    .into_machine()
-                    .expect("Machine should exist at this point")
-                    .into_store()
-                    .into_inner();
+                // Increment the sequence for the methods tests.
+                let sequence = self.next_sequence();
 
                 // TODO concurrent testing
                 // We'll be able to use thread to do concurrent testing once we set the Engine Pool with more than
@@ -304,23 +259,16 @@ impl Tester {
                             .methods
                             .iter()
                             .map(|method| {
-                                let mut executor = Self::new_executor(
+                                // TODO is it possible to impl `Clone` for `DefaultExecutor`
+                                // and submit PR upstream to implement with it?
+                                let mut executor = Executor::new(
                                     blockstore.clone(),
                                     root,
                                     self.builtin_actors.root,
+                                    self.account.1,
+                                    test_address,
+                                    target_id.clone().into(),
                                 );
-
-                                let message = Message {
-                                    from: self.account.1,
-                                    to: test_address,
-                                    gas_limit: 1000000000,
-                                    method_num: method.number(),
-                                    params: target_id.clone().into(),
-                                    // TODO sequence hard coded here for constructor test to work. This should be dynamic
-                                    // based on previous messages (1 if either constructor or setup is called, 2 if both have been called)
-                                    sequence: 1,
-                                    ..Message::default()
-                                };
 
                                 log::info!(
                                     "Testing test {}.{}() for Actor {}",
@@ -328,8 +276,7 @@ impl Tester {
                                     method.name(),
                                     target.name
                                 );
-                                let message =
-                                    executor.execute_message(message, ApplyKind::Explicit, 100);
+                                let message = executor.execute_method(method.number(), sequence);
 
                                 let ret = match message {
                                     Ok(apply_ret) => {
@@ -369,8 +316,12 @@ impl Default for Tester {
 
 #[cfg(test)]
 mod tests {
+    use fvm_ipld_blockstore::Blockstore;
     use fvm_shared::error::ExitCode;
-    use kythera_test_actors::wasm_bin::{BASIC_TEST_ACTOR_BINARY, CONSTRUCTOR_TEST_ACTOR_BINARY};
+    use kythera_test_actors::wasm_bin::{
+        BASIC_TEST_ACTOR_BINARY, CONSTRUCTOR_SETUP_TEST_ACTOR_BINARY,
+        CONSTRUCTOR_TEST_ACTOR_BINARY, SETUP_TEST_ACTOR_BINARY,
+    };
 
     use super::*;
     use kythera_common::abi::{Abi, Method};
@@ -559,10 +510,9 @@ mod tests {
                 panic!("Could not run test when testing Tester")
             }
             Ok(test_res) => {
-                assert_eq!(test_res.len(), 1usize);
-                assert_eq!(test_res[0].results.as_ref().unwrap().len(), 1usize);
+                assert_eq!(test_res.len(), 1);
+                assert_eq!(test_res[0].results.as_ref().unwrap().len(), 1);
                 assert_eq!(test_res[0].test_actor, &test_actor);
-                dbg!(&test_res[0].results);
                 test_res[0]
                     .results
                     .as_ref()
@@ -572,7 +522,119 @@ mod tests {
                         (MethodType::Test, TestResultType::Passed(apply_ret)) => {
                             assert_eq!(apply_ret.msg_receipt.exit_code, ExitCode::OK);
                         }
-                        _ => panic!("test against basic test actor should pass"),
+                        apply_ret => {
+                            panic!("test against basic test actor should pass: {apply_ret:?}")
+                        }
+                    })
+            }
+        }
+    }
+
+    #[test]
+    fn test_set_up_called() {
+        // Instantiate tester
+        let mut tester = Tester::new();
+
+        // Set target actor
+        let target_wasm_bin = wat::parse_str(TARGET_WAT).unwrap();
+        let target_abi = Abi {
+            constructor: None,
+            set_up: None,
+            methods: vec![],
+        };
+        let target_actor = WasmActor::new(String::from("Target"), target_wasm_bin, target_abi);
+
+        // Set test actor
+        let test_wasm_bin: Vec<u8> = Vec::from(SETUP_TEST_ACTOR_BINARY);
+        let test_abi = Abi {
+            constructor: None,
+            set_up: Some(Method::new_from_name("Setup").unwrap()),
+            methods: vec![Method::new_from_name("TestSetup").unwrap()],
+        };
+        let test_actor = WasmActor::new(String::from("Setup Test"), test_wasm_bin, test_abi);
+
+        match tester.deploy_target_actor(target_actor) {
+            Err(_) => {
+                panic!("Could not set target Actor when testing if SetUp is properly called")
+            }
+            _ => {}
+        }
+
+        match tester.test(&[test_actor.clone()], None) {
+            Err(_) => {
+                panic!("Could not run test when testing Tester")
+            }
+            Ok(test_res) => {
+                assert_eq!(test_res.len(), 1);
+                assert_eq!(test_res[0].results.as_ref().unwrap().len(), 1);
+                assert_eq!(test_res[0].test_actor, &test_actor);
+                test_res[0]
+                    .results
+                    .as_ref()
+                    .unwrap()
+                    .iter()
+                    .for_each(|result| match (result.method().r#type(), result.ret()) {
+                        (MethodType::Test, TestResultType::Passed(apply_ret)) => {
+                            assert_eq!(apply_ret.msg_receipt.exit_code, ExitCode::OK);
+                        }
+                        apply_ret => {
+                            panic!("test against basic test actor should pass: {apply_ret:?}")
+                        }
+                    })
+            }
+        }
+    }
+
+    #[test]
+    fn test_constructor_and_set_up_called() {
+        // Instantiate tester
+        let mut tester = Tester::new();
+
+        // Set target actor
+        let target_wasm_bin = wat::parse_str(TARGET_WAT).unwrap();
+        let target_abi = Abi {
+            constructor: None,
+            set_up: None,
+            methods: vec![],
+        };
+        let target_actor = WasmActor::new(String::from("Target"), target_wasm_bin, target_abi);
+
+        // Set test actor
+        let test_wasm_bin: Vec<u8> = Vec::from(CONSTRUCTOR_SETUP_TEST_ACTOR_BINARY);
+        let test_abi = Abi {
+            constructor: Some(Method::new_from_name("Constructor").unwrap()),
+            set_up: Some(Method::new_from_name("Setup").unwrap()),
+            methods: vec![Method::new_from_name("TestConstructorSetup").unwrap()],
+        };
+        let test_actor = WasmActor::new(String::from("Constructor Test"), test_wasm_bin, test_abi);
+
+        match tester.deploy_target_actor(target_actor) {
+            Err(_) => {
+                panic!("Could not set target Actor when testing if Constructor is properly called")
+            }
+            _ => {}
+        }
+
+        match tester.test(&[test_actor.clone()], None) {
+            Err(_) => {
+                panic!("Could not run test when testing Tester")
+            }
+            Ok(test_res) => {
+                assert_eq!(test_res.len(), 1);
+                assert_eq!(test_res[0].results.as_ref().unwrap().len(), 1);
+                assert_eq!(test_res[0].test_actor, &test_actor);
+                test_res[0]
+                    .results
+                    .as_ref()
+                    .unwrap()
+                    .iter()
+                    .for_each(|result| match (result.method().r#type(), result.ret()) {
+                        (MethodType::Test, TestResultType::Passed(apply_ret)) => {
+                            assert_eq!(apply_ret.msg_receipt.exit_code, ExitCode::OK);
+                        }
+                        apply_ret => {
+                            panic!("test against basic test actor should pass: {apply_ret:?}")
+                        }
                     })
             }
         }
