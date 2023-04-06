@@ -4,10 +4,12 @@ use std::path::PathBuf;
 
 use optional_struct::*;
 
-use crate::utils::constants::CONFIG_FILE;
 use crate::utils::repo::helpers::to_relative_path_to_project_root;
 use anyhow::Context;
 use serde::{Deserialize, Serialize};
+
+/// Name of the configuration file.
+const CONFIG_FILE: &str = "kythera.config.yml";
 
 #[derive(thiserror::Error, Debug)]
 enum Error {
