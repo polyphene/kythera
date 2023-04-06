@@ -2,7 +2,6 @@ mod commands;
 mod utils;
 
 use commands::test;
-use commands::tmp;
 
 use utils::context::CliContext;
 
@@ -25,24 +24,12 @@ struct Cli {
 enum Commands {
     #[clap(visible_alias = "t")]
     Test(test::TestArgs),
-    /// does temporary testing things
-    Tmp {
-        #[command(subcommand)]
-        command: Option<tmp::TmpSubCommands>,
-    },
 }
 
 fn main() -> anyhow::Result<()> {
     let cli = Cli::parse();
     match &cli.command {
         Some(Commands::Test(args)) => test::test(args)?,
-        Some(Commands::Tmp {
-            command: Some(tmp::TmpSubCommands::PrintConfig {}),
-        }) => {
-            let context = CliContext::new()?;
-            tmp::print_context(context)
-        }
-        Some(Commands::Tmp { command: None }) => {}
         None => {}
     }
     Ok(())

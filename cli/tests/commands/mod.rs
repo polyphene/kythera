@@ -1,5 +1,3 @@
-mod tmp;
-
 use assert_cmd::Command;
 
 #[test]
