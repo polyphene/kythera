@@ -3,7 +3,7 @@ use clap::Args;
 use kythera_lib::Tester;
 use std::path::PathBuf;
 
-/// Run an Actor tests.
+/// Kythera test command cli arguments.
 #[derive(Args, Debug)]
 pub(crate) struct TestArgs {
     /// Actor files dir.
