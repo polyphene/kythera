@@ -33,12 +33,7 @@ fn test_builtin_deployed() {
         test_abi,
     );
 
-    match tester.deploy_target_actor(target_actor) {
-        Err(_) => {
-            panic!("Could not set target Actor when testing if builtins are properly deployed")
-        }
-        _ => {}
-    }
+    tester.deploy_target_actor(target_actor).expect("Could not set target Actor when testing if builtins are properly deployed");
 
     // Run test
     match tester.test(&[test_actor.clone()], None) {
