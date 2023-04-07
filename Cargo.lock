@@ -2560,6 +2560,7 @@ dependencies = [
  "anyhow",
  "cid",
  "fvm",
+ "fvm_ipld_blockstore 0.1.1 (git+https://github.com/filecoin-project/ref-fvm.git)",
  "fvm_ipld_encoding 0.3.3 (git+https://github.com/filecoin-project/ref-fvm.git)",
  "fvm_shared 3.1.0",
  "multihash",
@@ -3502,19 +3503,6 @@ dependencies = [
  "proc-macro2",
  "quote",
  "syn 1.0.109",
-]
-
-[[package]]
-name = "setup_test_actor"
-version = "0.1.0"
-dependencies = [
- "cid",
- "fvm_ipld_blockstore 0.1.1 (git+https://github.com/filecoin-project/ref-fvm.git)",
- "fvm_ipld_encoding 0.3.3 (git+https://github.com/filecoin-project/ref-fvm.git)",
- "fvm_sdk 3.0.0 (git+https://github.com/filecoin-project/ref-fvm.git)",
- "fvm_shared 3.1.0",
- "serde",
- "serde_tuple",
 ]
 
 [[package]]

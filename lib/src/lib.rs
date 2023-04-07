@@ -1,13 +1,15 @@
 // Copyright 2023 Polyphene.
 // SPDX-License-Identifier: Apache-2.0, MIT
 
-use executor::Executor;
 pub use kythera_common::{
     abi::{pascal_case_split, Abi, Method, MethodType},
     from_slice, to_vec,
 };
 
-use kythera_fvm::{executor::ApplyRet, Account};
+use kythera_fvm::{
+    executor::{ApplyRet, KytheraExecutor},
+    Account,
+};
 use std::sync::mpsc::Sender;
 
 use fvm_shared::{address::Address, bigint::Zero, econ::TokenAmount, error::ExitCode};
@@ -16,7 +18,6 @@ use error::Error;
 use state_tree::{BuiltInActors, StateTree};
 
 mod error;
-mod executor;
 mod state_tree;
 
 /// Main interface to test `Actor`s with Kythera.
@@ -192,7 +193,7 @@ impl Tester {
 
                 let root = self.state_tree.flush();
                 let blockstore = self.state_tree.store().clone();
-                let mut executor = Executor::new(
+                let mut executor = KytheraExecutor::new(
                     blockstore,
                     root,
                     self.builtin_actors.root,
@@ -206,16 +207,19 @@ impl Tester {
                     match executor.execute_method(constructor.number(), self.next_sequence()) {
                         Ok(apply_ret) => {
                             if apply_ret.msg_receipt.exit_code != ExitCode::OK {
+                                let source = apply_ret.failure_info.map(|f| f.to_string().into());
                                 return TestActorResults {
                                     test_actor,
-                                    results: Err(Error::ConstructorError(apply_ret.failure_info)),
+                                    results: Err(Error::ConstructorError { source }),
                                 };
                             }
                         }
                         Err(err) => {
                             return TestActorResults {
                                 test_actor,
-                                results: Err(err),
+                                results: Err(Error::ConstructorError {
+                                    source: Some(err.into()),
+                                }),
                             }
                         }
                     }
@@ -226,16 +230,19 @@ impl Tester {
                     match executor.execute_method(set_up.number(), self.next_sequence()) {
                         Ok(apply_ret) => {
                             if apply_ret.msg_receipt.exit_code != ExitCode::OK {
+                                let source = apply_ret.failure_info.map(|f| f.to_string().into());
                                 return TestActorResults {
                                     test_actor,
-                                    results: Err(Error::SetUpError(apply_ret.failure_info)),
+                                    results: Err(Error::SetupError { source }),
                                 };
                             }
                         }
                         Err(err) => {
                             return TestActorResults {
                                 test_actor,
-                                results: Err(err),
+                                results: Err(Error::SetupError {
+                                    source: Some(err.into()),
+                                }),
                             }
                         }
                     }
@@ -261,7 +268,7 @@ impl Tester {
                             .map(|method| {
                                 // TODO is it possible to impl `Clone` for `DefaultExecutor`
                                 // and submit PR upstream to implement with it?
-                                let mut executor = Executor::new(
+                                let mut executor = KytheraExecutor::new(
                                     blockstore.clone(),
                                     root,
                                     self.builtin_actors.root,
@@ -501,61 +508,6 @@ mod tests {
         match tester.deploy_target_actor(target_actor) {
             Err(_) => {
                 panic!("Could not set target Actor when testing if Constructor is properly called")
-            }
-            _ => {}
-        }
-
-        match tester.test(&[test_actor.clone()], None) {
-            Err(_) => {
-                panic!("Could not run test when testing Tester")
-            }
-            Ok(test_res) => {
-                assert_eq!(test_res.len(), 1);
-                assert_eq!(test_res[0].results.as_ref().unwrap().len(), 1);
-                assert_eq!(test_res[0].test_actor, &test_actor);
-                test_res[0]
-                    .results
-                    .as_ref()
-                    .unwrap()
-                    .iter()
-                    .for_each(|result| match (result.method().r#type(), result.ret()) {
-                        (MethodType::Test, TestResultType::Passed(apply_ret)) => {
-                            assert_eq!(apply_ret.msg_receipt.exit_code, ExitCode::OK);
-                        }
-                        apply_ret => {
-                            panic!("test against basic test actor should pass: {apply_ret:?}")
-                        }
-                    })
-            }
-        }
-    }
-
-    #[test]
-    fn test_set_up_called() {
-        // Instantiate tester
-        let mut tester = Tester::new();
-
-        // Set target actor
-        let target_wasm_bin = wat::parse_str(TARGET_WAT).unwrap();
-        let target_abi = Abi {
-            constructor: None,
-            set_up: None,
-            methods: vec![],
-        };
-        let target_actor = WasmActor::new(String::from("Target"), target_wasm_bin, target_abi);
-
-        // Set test actor
-        let test_wasm_bin: Vec<u8> = Vec::from(SETUP_TEST_ACTOR_BINARY);
-        let test_abi = Abi {
-            constructor: None,
-            set_up: Some(Method::new_from_name("Setup").unwrap()),
-            methods: vec![Method::new_from_name("TestSetup").unwrap()],
-        };
-        let test_actor = WasmActor::new(String::from("Setup Test"), test_wasm_bin, test_abi);
-
-        match tester.deploy_target_actor(target_actor) {
-            Err(_) => {
-                panic!("Could not set target Actor when testing if SetUp is properly called")
             }
             _ => {}
         }

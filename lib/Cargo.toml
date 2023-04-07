@@ -6,7 +6,6 @@ edition = "2021"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-# TODO since this is a library, we need to depend on actual published versions.
 actors-v10 = { package = "fil_builtin_actors_bundle", git = "https://github.com/filecoin-project/builtin-actors", rev = "c5cbd5b" }
 fvm_ipld_blockstore = { git = "https://github.com/filecoin-project/ref-fvm.git", version = "0.1.1" }
 fvm_ipld_car = { git = "https://github.com/filecoin-project/ref-fvm.git", version = "0.6.0" }

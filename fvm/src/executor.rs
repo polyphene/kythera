@@ -1,7 +1,17 @@
 // Copyright 2023 Polyphene.
 // SPDX-License-Identifier: Apache-2.0, MIT
 
+use crate::externs::FakeExterns;
+use crate::machine::KytheraMachine;
 use cid::Cid;
+use fvm::call_manager::DefaultCallManager;
+use fvm::engine::EnginePool;
+use fvm::executor::DefaultExecutor;
+use fvm::DefaultKernel;
+
+pub use fvm::executor::Executor as _;
+pub use fvm::executor::{ApplyFailure, ApplyKind, ApplyRet};
+use fvm::machine::{Machine, NetworkConfig};
 use fvm_ipld_blockstore::MemoryBlockstore;
 use fvm_ipld_encoding::RawBytes;
 use fvm_shared::address::Address;
@@ -9,29 +19,21 @@ use fvm_shared::econ::TokenAmount;
 use fvm_shared::message::Message;
 use fvm_shared::version::NetworkVersion;
 use fvm_shared::MethodNum;
-use kythera_fvm::engine::EnginePool;
-use kythera_fvm::executor::{ApplyRet, Executor as _};
-use kythera_fvm::machine::NetworkConfig;
-use kythera_fvm::{
-    executor::{ApplyKind, KytheraExecutor},
-    externs::FakeExterns,
-    machine::{KytheraMachine, Machine},
-};
-
-use crate::error::{Error, WrapFVMError};
 
 const NETWORK_VERSION: NetworkVersion = NetworkVersion::V18;
 const DEFAULT_BASE_FEE: u64 = 100;
 
 /// Wrapper around `fvm` Executor with sane defaults.
-pub struct Executor {
-    inner: KytheraExecutor<MemoryBlockstore, FakeExterns>,
+pub struct KytheraExecutor {
+    inner: DefaultExecutor<
+        DefaultKernel<DefaultCallManager<KytheraMachine<MemoryBlockstore, FakeExterns>>>,
+    >,
     account_address: Address,
     test_address: Address,
     target_actor_id: RawBytes,
 }
 
-impl Executor {
+impl KytheraExecutor {
     /// Create a new `Executor`.
     pub fn new(
         blockstore: MemoryBlockstore,
@@ -40,7 +42,7 @@ impl Executor {
         account_address: Address,
         test_address: Address,
         target_actor_id: RawBytes,
-    ) -> Executor {
+    ) -> Self {
         let mut nc = NetworkConfig::new(NETWORK_VERSION);
         nc.override_actors(builtin_actors);
         nc.enable_actor_debugging();
@@ -62,7 +64,7 @@ impl Executor {
             .expect("Should be able to start KytheraMachine");
 
         Self {
-            inner: KytheraExecutor::new(engine, machine).expect("Should be able to start Executor"),
+            inner: DefaultExecutor::new(engine, machine).expect("Should be able to start Executor"),
             account_address,
             test_address,
             target_actor_id,
@@ -74,7 +76,7 @@ impl Executor {
         &mut self,
         method_num: MethodNum,
         sequence: u64,
-    ) -> Result<ApplyRet, Error> {
+    ) -> Result<ApplyRet, anyhow::Error> {
         let message = Message {
             from: self.account_address,
             to: self.test_address,
@@ -87,7 +89,6 @@ impl Executor {
 
         self.inner
             .execute_message(message, ApplyKind::Explicit, 100)
-            .tester_err("Could not execute message")
     }
 
     /// Convert the executor back into a [`Blockstore`].

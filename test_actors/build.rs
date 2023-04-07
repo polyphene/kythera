@@ -9,7 +9,6 @@ use std::thread;
 const ACTORS: &[&str] = &[
     "basic_test_actor",
     "constructor_test_actor",
-    "setup_test_actor",
     "constructor_setup_test_actor",
 ];
 
