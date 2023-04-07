@@ -1,6 +1,7 @@
 // Copyright 2023 Polyphene.
 // SPDX-License-Identifier: Apache-2.0, MIT
 
+use frc42_dispatch::match_method;
 use fvm_ipld_encoding::DAG_CBOR;
 use fvm_sdk as sdk;
 use fvm_shared::error::ExitCode;
@@ -24,20 +25,22 @@ where
     Ok(sdk::ipld::put_block(DAG_CBOR, bytes.as_slice())?)
 }
 
-// TODO use helix frc42_dispatch when their dependencies are up to date.
 #[no_mangle]
 fn invoke(_input: u32) -> u32 {
     let method_num = sdk::message::method_number();
-    match method_num {
-        3948827889 => return_ipld(TestOne()).unwrap(),
-        891686990 => return_ipld(TestTwo()).unwrap(),
-        _ => {
-            sdk::vm::abort(
-                ExitCode::USR_UNHANDLED_MESSAGE.value(),
-                Some("Unknown method number"),
-            );
+    match_method!(
+        method_num,
+        {
+            "TestOne" => return_ipld(TestOne()).unwrap(),
+            "TestTwo" => return_ipld(TestTwo()).unwrap(),
+            _ => {
+                sdk::vm::abort(
+                    ExitCode::USR_UNHANDLED_MESSAGE.value(),
+                    Some("Unknown method number"),
+                );
+            }
         }
-    }
+    )
 }
 
 #[allow(non_snake_case)]

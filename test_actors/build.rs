@@ -8,6 +8,7 @@ use std::thread;
 
 const ACTORS: &[&str] = &[
     "basic_test_actor",
+    "builtin_test_actor",
     "constructor_test_actor",
     "constructor_setup_test_actor",
 ];
@@ -32,7 +33,7 @@ fn main() -> Result<(), Box<dyn Error>> {
     }
 
     // Cargo build command for all actors at once.
-    let mut cmd = Command::new(&cargo);
+    let mut cmd = Command::new(cargo);
     cmd.arg("build")
         .args(ACTORS.iter().map(|pkg| "-p=".to_owned() + pkg))
         .arg("--target=wasm32-unknown-unknown")

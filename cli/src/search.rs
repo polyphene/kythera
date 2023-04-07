@@ -74,7 +74,6 @@ pub fn search_files<P: AsRef<Path>>(path: P) -> anyhow::Result<Vec<Test>> {
     let (target_actor_paths, mut test_artifacts_paths): (Vec<String>, Vec<String>) =
         fs::read_dir(path)
             .context("Could not read the input path")?
-            .into_iter()
             .filter_map(Result::ok)
             // Path::ends_with is different from String::ends_with,
             // Path::ends_with operates on the child, in this case

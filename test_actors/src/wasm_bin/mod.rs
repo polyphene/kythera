@@ -19,3 +19,4 @@ pub const CONSTRUCTOR_TEST_ACTOR_BINARY: &[u8] =
     include_bytes!(wasm_bin!("constructor_test_actor"));
 pub const CONSTRUCTOR_SETUP_TEST_ACTOR_BINARY: &[u8] =
     include_bytes!(wasm_bin!("constructor_setup_test_actor"));
+pub const BUILTIN_TEST_ACTOR_BINARY: &[u8] = include_bytes!(wasm_bin!("builtin_test_actor"));
