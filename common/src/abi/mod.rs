@@ -109,7 +109,6 @@ impl Method {
 
 /// Implement custom deserialization method for [`Method`] as we expect the bytes to be deserialized to only contain
 /// the `name` and not the `number` property that is generated at deserialization time.
-// TODO we could try to simplify our deserialization process in the future.
 impl<'de> serde::de::Deserialize<'de> for Method {
     fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
     where
