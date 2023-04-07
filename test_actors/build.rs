@@ -6,7 +6,7 @@ use std::path::Path;
 use std::process::{Command, Stdio};
 use std::thread;
 
-const ACTORS: &[&str] = &["basic_test_actor"];
+const ACTORS: &[&str] = &["basic_test_actor", "builtin_test_actor"];
 
 fn main() -> Result<(), Box<dyn Error>> {
     // Cargo executable location.
@@ -28,7 +28,7 @@ fn main() -> Result<(), Box<dyn Error>> {
     }
 
     // Cargo build command for all actors at once.
-    let mut cmd = Command::new(&cargo);
+    let mut cmd = Command::new(cargo);
     cmd.arg("build")
         .args(ACTORS.iter().map(|pkg| "-p=".to_owned() + pkg))
         .arg("--target=wasm32-unknown-unknown")
