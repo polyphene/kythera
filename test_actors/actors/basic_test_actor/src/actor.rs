@@ -24,7 +24,6 @@ where
     Ok(sdk::ipld::put_block(DAG_CBOR, bytes.as_slice())?)
 }
 
-// TODO use helix frc42_dispatch when their dependencies are up to date.
 #[no_mangle]
 fn invoke(_input: u32) -> u32 {
     let method_num = sdk::message::method_number();
