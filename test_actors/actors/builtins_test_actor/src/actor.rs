@@ -13,7 +13,6 @@ use fvm_sdk::actor::{get_actor_code_cid, get_builtin_actor_type};
 use fvm_sdk::NO_DATA_BLOCK_ID;
 use fvm_shared::error::ExitCode;
 
-// TODO use helix frc42_dispatch when their dependencies are up to date.
 #[no_mangle]
 fn invoke(_input: u32) -> u32 {
     std::panic::set_hook(Box::new(|info| {
