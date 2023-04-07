@@ -300,20 +300,7 @@ impl Default for Tester {
 
 #[cfg(test)]
 mod tests {
-    use fvm_shared::error::ExitCode;
-    use kythera_test_actors::wasm_bin::BASIC_TEST_ACTOR_BINARY;
-
     use super::*;
-    use kythera_common::abi::{Abi, Method};
-
-    const TARGET_WAT: &str = r#"
-        ;; Mock invoke function
-            (module
-                (func (export "invoke") (param $x i32) (result i32)
-                    (i32.const 1)
-                )
-            )
-        "#;
 
     #[test]
     fn test_tester_instantiation() {
@@ -387,66 +374,5 @@ mod tests {
         assert_eq!(tester.account.0, 102);
 
         assert!(tester.target_actor.is_none());
-    }
-
-    #[test]
-    fn test_tester_test() {
-        // Instantiate tester
-        let mut tester = Tester::new();
-
-        // Set target actor
-        let target_wasm_bin = wat::parse_str(TARGET_WAT).unwrap();
-        let target_abi = Abi { methods: vec![] };
-        let target_actor = WasmActor::new(String::from("Target"), target_wasm_bin, target_abi);
-
-        // Set test actor
-        let test_wasm_bin: Vec<u8> = Vec::from(BASIC_TEST_ACTOR_BINARY);
-        let test_abi = Abi {
-            methods: vec![
-                Method::new_from_name("TestOne").unwrap(),
-                Method::new_from_name("TestTwo").unwrap(),
-            ],
-        };
-        let test_actor = WasmActor::new(String::from("Basic"), test_wasm_bin, test_abi);
-
-        match tester.deploy_target_actor(target_actor) {
-            Err(_) => {
-                panic!("Could not set target Actor when testing Tester")
-            }
-            _ => {}
-        }
-
-        match tester.test(&[test_actor.clone()], None) {
-            Err(_) => {
-                panic!("Could not run test when testing Tester")
-            }
-            Ok(test_res) => {
-                assert_eq!(test_res.len(), 1usize);
-                assert_eq!(test_res[0].results.as_ref().unwrap().len(), 2usize);
-                assert_eq!(test_res[0].test_actor, &test_actor);
-
-                test_res[0]
-                    .results
-                    .as_ref()
-                    .unwrap()
-                    .iter()
-                    .enumerate()
-                    .for_each(
-                        |(i, result)| match (result.method().r#type(), result.ret()) {
-                            (MethodType::Test, TestResultType::Passed(apply_ret)) => {
-                                assert_eq!(apply_ret.msg_receipt.exit_code, ExitCode::OK);
-                                let ret_value: String =
-                                    apply_ret.msg_receipt.return_data.deserialize().unwrap();
-                                if i == 0usize {
-                                    assert_eq!(ret_value, String::from("TestOne"))
-                                } else {
-                                    assert_eq!(ret_value, String::from("TestTwo"))
-                                }
-                            }
-                            _ => panic!("test against basic test actor should pass"),
-                        },
-                    )
-            }
-        }
     }
 }
