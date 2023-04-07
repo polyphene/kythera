@@ -12,7 +12,7 @@ const TARGET_WAT: &str = r#"
             )
         "#;
 
-fn set_target_actor(test: &mut Tester, name: String, binary: Vec<u8>, abi: Abi) {
+fn set_target_actor(tester: &mut Tester, name: String, binary: Vec<u8>, abi: Abi) {
     let target_actor = WasmActor::new(name, binary, abi);
 
     tester
