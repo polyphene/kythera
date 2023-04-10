@@ -6,8 +6,6 @@ mod utils;
 
 use commands::test;
 
-use utils::context::CliContext;
-
 use clap::{Parser, Subcommand};
 
 #[derive(Parser)]
