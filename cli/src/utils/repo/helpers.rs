@@ -1,4 +1,4 @@
-use anyhow::{Context, Result};
+use anyhow::{Context, format_err, Result};
 use path_clean::PathClean;
 use std::env;
 use std::fmt::format;
@@ -21,7 +21,7 @@ pub fn to_relative_path_to_project_root(tested_path_os_str: &str) -> Result<Stri
     })?;
     let stripped_path_str = stripped_path
         .to_str()
-        .ok_or("invalid unicode characters in the file path")?;
+        .ok_or(format_err!("invalid unicode characters in the file path"))?;
     Ok(stripped_path_str.to_string())
 }
 
