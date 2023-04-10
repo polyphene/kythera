@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0, MIT
 
 use cid::{multihash::Code, Cid};
+use frc42_dispatch::match_method;
 use fvm_ipld_blockstore::Block;
 use fvm_ipld_encoding::tuple::{Deserialize_tuple, Serialize_tuple};
 use fvm_ipld_encoding::DAG_CBOR;
@@ -36,23 +37,32 @@ impl TestConstructorSetupActorState {
     }
 }
 
-// TODO use helix frc42_dispatch when their dependencies are up to date.
 #[no_mangle]
 fn invoke(_input: u32) -> u32 {
     let method_num = sdk::message::method_number();
-    match method_num {
-        1 => Constructor(),
-        3556852554 => Setup(),
-        3654954405 => TestConstructorSetup(),
-        method => {
-            sdk::vm::abort(
-                ExitCode::USR_UNHANDLED_MESSAGE.value(),
-                Some(&format!("Unknown method number: {method}")),
-            );
+    match_method!(
+        method_num,
+        {
+            "Constructor" => {
+                Constructor();
+                NO_DATA_BLOCK_ID
+            }
+            "Setup" => {
+                Setup();
+                NO_DATA_BLOCK_ID
+            }
+            "TestConstructorSetup" => {
+                TestConstructorSetup();
+                NO_DATA_BLOCK_ID
+            },
+            _ => {
+                sdk::vm::abort(
+                    ExitCode::USR_UNHANDLED_MESSAGE.value(),
+                    Some("Unknown method number"),
+                );
+            }
         }
-    }
-
-    NO_DATA_BLOCK_ID
+    )
 }
 
 #[allow(non_snake_case)]

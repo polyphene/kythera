@@ -3,7 +3,6 @@ use kythera_common::abi::{Abi, Method, MethodType};
 use kythera_lib::{TestResultType, Tester, WasmActor};
 use kythera_test_actors::wasm_bin::{
     BASIC_TEST_ACTOR_BINARY, BUILTIN_TEST_ACTOR_BINARY, CONSTRUCTOR_SETUP_TEST_ACTOR_BINARY,
-    CONSTRUCTOR_TEST_ACTOR_BINARY,
 };
 const TARGET_WAT: &str = r#"
         ;; Mock invoke function
@@ -139,60 +138,6 @@ fn test_builtin_deployed() {
         }
     }
 }
-#[test]
-fn test_constructor_called() {
-    // Instantiate tester
-    let mut tester = Tester::new();
-
-    // Set target actor
-    let target_wasm_bin = wat::parse_str(TARGET_WAT).unwrap();
-    let target_abi = Abi {
-        constructor: None,
-        set_up: None,
-        methods: vec![],
-    };
-    let target_actor = WasmActor::new(String::from("Target"), target_wasm_bin, target_abi);
-
-    // Set test actor
-    let test_wasm_bin: Vec<u8> = Vec::from(CONSTRUCTOR_TEST_ACTOR_BINARY);
-    let test_abi = Abi {
-        constructor: Some(Method::new_from_name("Constructor").unwrap()),
-        set_up: None,
-        methods: vec![Method::new_from_name("TestConstructor").unwrap()],
-    };
-    let test_actor = WasmActor::new(String::from("Constructor Test"), test_wasm_bin, test_abi);
-
-    match tester.deploy_target_actor(target_actor) {
-        Err(_) => {
-            panic!("Could not set target Actor when testing if Constructor is properly called")
-        }
-        _ => {}
-    }
-
-    match tester.test(&[test_actor.clone()], None) {
-        Err(_) => {
-            panic!("Could not run test when testing Tester")
-        }
-        Ok(test_res) => {
-            assert_eq!(test_res.len(), 1);
-            assert_eq!(test_res[0].results.as_ref().unwrap().len(), 1);
-            assert_eq!(test_res[0].test_actor, &test_actor);
-            test_res[0]
-                .results
-                .as_ref()
-                .unwrap()
-                .iter()
-                .for_each(|result| match (result.method().r#type(), result.ret()) {
-                    (MethodType::Test, TestResultType::Passed(apply_ret)) => {
-                        assert_eq!(apply_ret.msg_receipt.exit_code, ExitCode::OK);
-                    }
-                    apply_ret => {
-                        panic!("test against basic test actor should pass: {apply_ret:?}")
-                    }
-                })
-        }
-    }
-}
 
 #[test]
 fn test_constructor_and_set_up_called() {
@@ -200,13 +145,17 @@ fn test_constructor_and_set_up_called() {
     let mut tester = Tester::new();
 
     // Set target actor
-    let target_wasm_bin = wat::parse_str(TARGET_WAT).unwrap();
-    let target_abi = Abi {
-        constructor: None,
-        set_up: None,
-        methods: vec![],
-    };
-    let target_actor = WasmActor::new(String::from("Target"), target_wasm_bin, target_abi);
+
+    set_target_actor(
+        &mut tester,
+        String::from("Target"),
+        wat::parse_str(TARGET_WAT).unwrap(),
+        Abi {
+            constructor: None,
+            set_up: None,
+            methods: vec![],
+        },
+    );
 
     // Set test actor
     let test_wasm_bin: Vec<u8> = Vec::from(CONSTRUCTOR_SETUP_TEST_ACTOR_BINARY);
@@ -216,13 +165,6 @@ fn test_constructor_and_set_up_called() {
         methods: vec![Method::new_from_name("TestConstructorSetup").unwrap()],
     };
     let test_actor = WasmActor::new(String::from("Constructor Test"), test_wasm_bin, test_abi);
-
-    match tester.deploy_target_actor(target_actor) {
-        Err(_) => {
-            panic!("Could not set target Actor when testing if Constructor is properly called")
-        }
-        _ => {}
-    }
 
     match tester.test(&[test_actor.clone()], None) {
         Err(_) => {
