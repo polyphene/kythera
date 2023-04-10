@@ -1,15 +1,8 @@
 use anyhow::{Context, Result};
 use path_clean::PathClean;
 use std::env;
+use std::fmt::format;
 use std::path::{Path, PathBuf};
-
-#[derive(thiserror::Error, Debug)]
-enum Error {
-    #[error("file path outside the project directory: {0}")]
-    UnsecureFilePath(String),
-    #[error("invalid unicode characters in the file path")]
-    NonUnicodeFilePath,
-}
 
 /// Check that a path leads to a location that is part of the project
 pub fn to_relative_path_to_project_root(tested_path_os_str: &str) -> Result<String> {
@@ -20,10 +13,15 @@ pub fn to_relative_path_to_project_root(tested_path_os_str: &str) -> Result<Stri
     // project root directory.
     let root_path = env::current_dir()?;
     let printable_path = path.to_str().unwrap_or("");
-    let stripped_path = path
-        .strip_prefix(&root_path)
-        .context(Error::UnsecureFilePath(printable_path.to_string()))?;
-    let stripped_path_str = stripped_path.to_str().ok_or(Error::NonUnicodeFilePath)?;
+    let stripped_path = path.strip_prefix(&root_path).with_context(|| {
+        format!(
+            "file path outside the project directory: {0}",
+            printable_path.to_string()
+        )
+    })?;
+    let stripped_path_str = stripped_path
+        .to_str()
+        .ok_or("invalid unicode characters in the file path")?;
     Ok(stripped_path_str.to_string())
 }
 
