@@ -172,7 +172,7 @@ mod tests {
     use tempfile::tempdir;
 
     // Util to create actor files on a given directory path.
-    fn create_actors_in_dir(dir_path: &Path, actors: Vec<(&str, &Abi)>) -> () {
+    fn create_actors_in_dir(dir_path: &Path, actors: Vec<(&str, &Abi)>) {
         for (name, abi) in actors {
             File::create(dir_path.join(name.to_owned() + ".wasm"))
                 .unwrap()
