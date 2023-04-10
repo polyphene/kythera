@@ -1,8 +1,5 @@
-use std::sync::mpsc::Sender;
-
 // Copyright 2023 Polyphene.
 // SPDX-License-Identifier: Apache-2.0, MIT
-use cid::Cid;
 
 pub use kythera_common::{
     abi::{pascal_case_split, Abi, Method, MethodType},
@@ -10,27 +7,18 @@ pub use kythera_common::{
 };
 
 use kythera_fvm::{
-    engine::EnginePool,
-    executor::{ApplyKind, ApplyRet, Executor, KytheraExecutor},
-    externs::FakeExterns,
-    machine::{KytheraMachine, NetworkConfig},
+    executor::{ApplyRet, KytheraExecutor},
     Account,
 };
+use std::sync::mpsc::Sender;
 
-use fvm_ipld_blockstore::Blockstore;
-use fvm_shared::{
-    address::Address, bigint::Zero, econ::TokenAmount, error::ExitCode, message::Message,
-    version::NetworkVersion,
-};
+use fvm_shared::{address::Address, bigint::Zero, econ::TokenAmount, error::ExitCode};
 
 use error::Error;
 use state_tree::{BuiltInActors, StateTree};
 
 mod error;
 mod state_tree;
-
-const NETWORK_VERSION: NetworkVersion = NetworkVersion::V18;
-const DEFAULT_BASE_FEE: u64 = 100;
 
 /// Main interface to test `Actor`s with Kythera.
 pub struct Tester {
@@ -42,6 +30,8 @@ pub struct Tester {
     account: Account,
     // The Target Actor to be tested.
     target_actor: Option<DeployedActor>,
+    // The Method message sequence number.
+    sequence: u64,
 }
 
 /// WebAssembly Actor.
@@ -132,36 +122,8 @@ impl Tester {
             state_tree,
             account,
             target_actor: None,
+            sequence: 0,
         }
-    }
-
-    /// Create a new `Executor` to test the provided test Actor.
-    fn new_executor<B: Blockstore + 'static>(
-        blockstore: B,
-        state_root: Cid,
-        builtin_actors: Cid,
-    ) -> KytheraExecutor<B, FakeExterns> {
-        let mut nc = NetworkConfig::new(NETWORK_VERSION);
-        nc.override_actors(builtin_actors);
-        nc.enable_actor_debugging();
-
-        let mut mc = nc.for_epoch(0, 0, state_root);
-        mc.set_base_fee(TokenAmount::from_atto(DEFAULT_BASE_FEE))
-            .enable_tracing();
-
-        let code_cids = vec![];
-
-        let engine = EnginePool::new_default((&mc.network.clone()).into())
-            .expect("Should be able to start EnginePool");
-        engine
-            .acquire()
-            .preload(&blockstore, &code_cids)
-            .expect("Should be able to preload Executor");
-
-        let machine = KytheraMachine::new(&mc, blockstore, FakeExterns::new())
-            .expect("Should be able to start KytheraMachine");
-
-        KytheraExecutor::new(engine, machine).expect("Should be able to start Executor")
     }
 
     /// Deploy the target Actor file into the `StateTree`.
@@ -175,6 +137,13 @@ impl Tester {
         });
 
         Ok(())
+    }
+
+    // Get and increment the next Actor sequence.
+    pub fn next_sequence(&mut self) -> u64 {
+        let sequence = self.sequence;
+        self.sequence = sequence + 1;
+        sequence
     }
 
     /// Test an Actor on a `MemoryBlockstore`.
@@ -214,10 +183,75 @@ impl Tester {
                     }
                 };
 
-                let root = self.state_tree.flush();
-
                 log::info!("Testing Actor {}", target.name);
 
+                let root = self.state_tree.flush();
+                let blockstore = self.state_tree.store().clone();
+                let mut executor = KytheraExecutor::new(
+                    blockstore,
+                    root,
+                    self.builtin_actors.root,
+                    self.account.1,
+                    test_address,
+                    target_id.clone().into(),
+                );
+
+                // Run the constructor if it exists.
+                if let Some(constructor) = test_actor.abi().constructor() {
+                    match executor.execute_method(constructor.number(), self.next_sequence()) {
+                        Ok(apply_ret) => {
+                            if apply_ret.msg_receipt.exit_code != ExitCode::OK {
+                                let source = apply_ret.failure_info.map(|f| f.to_string().into());
+                                return TestActorResults {
+                                    test_actor,
+                                    results: Err(Error::ConstructorError { source }),
+                                };
+                            }
+                        }
+                        Err(err) => {
+                            return TestActorResults {
+                                test_actor,
+                                results: Err(Error::ConstructorError {
+                                    source: Some(err.into()),
+                                }),
+                            }
+                        }
+                    }
+                }
+
+                // Run Setup if it exists.
+                if let Some(set_up) = test_actor.abi().set_up() {
+                    match executor.execute_method(set_up.number(), self.next_sequence()) {
+                        Ok(apply_ret) => {
+                            if apply_ret.msg_receipt.exit_code != ExitCode::OK {
+                                let source = apply_ret.failure_info.map(|f| f.to_string().into());
+                                return TestActorResults {
+                                    test_actor,
+                                    results: Err(Error::SetupError { source }),
+                                };
+                            }
+                        }
+                        Err(err) => {
+                            return TestActorResults {
+                                test_actor,
+                                results: Err(Error::SetupError {
+                                    source: Some(err.into()),
+                                }),
+                            }
+                        }
+                    }
+                }
+
+                let (root, blockstore) = executor.into_store();
+
+                // Increment the sequence for the methods tests.
+                let sequence = self.next_sequence();
+
+                // TODO concurrent testing
+                // We'll be able to use thread to do concurrent testing once we set the Engine Pool with more than
+                // one possible concurrent engine.
+                // The following steps will not end up in a result. Either we could finalize message
+                // handling and we return the related ApplyRet or we return nothing.
                 TestActorResults {
                     test_actor,
                     results: Ok(
@@ -226,19 +260,16 @@ impl Tester {
                             .methods
                             .iter()
                             .map(|method| {
-                                let blockstore = self.state_tree.store().clone();
-
-                                let mut executor =
-                                    Self::new_executor(blockstore, root, self.builtin_actors.root);
-
-                                let message = Message {
-                                    from: self.account.1,
-                                    to: test_address,
-                                    gas_limit: 1000000000,
-                                    method_num: method.number(),
-                                    params: target_id.clone().into(),
-                                    ..Message::default()
-                                };
+                                // TODO is it possible to impl `Clone` for `DefaultExecutor`
+                                // and submit PR upstream to implement with it?
+                                let mut executor = KytheraExecutor::new(
+                                    blockstore.clone(),
+                                    root,
+                                    self.builtin_actors.root,
+                                    self.account.1,
+                                    test_address,
+                                    target_id.clone().into(),
+                                );
 
                                 log::info!(
                                     "Testing test {}.{}() for Actor {}",
@@ -246,8 +277,7 @@ impl Tester {
                                     method.name(),
                                     target.name
                                 );
-                                let message =
-                                    executor.execute_message(message, ApplyKind::Explicit, 100);
+                                let message = executor.execute_method(method.number(), sequence);
 
                                 let ret = match message {
                                     Ok(apply_ret) => {
@@ -288,6 +318,7 @@ impl Default for Tester {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use fvm_ipld_blockstore::Blockstore;
 
     #[test]
     fn test_tester_instantiation() {

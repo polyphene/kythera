@@ -10,6 +10,7 @@ const ACTORS: &[&str] = &[
     "basic_test_actor",
     "builtin_test_actor",
     "cheatcodes_test_actor",
+    "constructor_setup_test_actor",
 ];
 
 fn main() -> Result<(), Box<dyn Error>> {

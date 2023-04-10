@@ -9,22 +9,9 @@ pub mod engine {
     pub use fvm::engine::EnginePool;
 }
 
-pub mod executor {
-    use crate::machine::KytheraMachine;
-    use fvm::call_manager::DefaultCallManager;
-    use fvm::executor::DefaultExecutor;
-    use fvm::DefaultKernel;
-
-    pub use fvm::executor::Executor;
-    pub use fvm::executor::{ApplyKind, ApplyRet};
-    pub type KytheraExecutor<B, E> =
-        DefaultExecutor<DefaultKernel<DefaultCallManager<KytheraMachine<B, E>>>>;
-}
-
+pub mod executor;
 pub mod machine {
-    pub use fvm::machine::DefaultMachine as KytheraMachine;
-    pub use fvm::machine::Manifest;
-    pub use fvm::machine::NetworkConfig;
+    pub use fvm::machine::{DefaultMachine as KytheraMachine, Machine, Manifest, NetworkConfig};
 }
 
 pub mod state_tree {
