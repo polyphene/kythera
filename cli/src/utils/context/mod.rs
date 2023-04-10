@@ -25,13 +25,13 @@ enum Error {
 /// commands.
 #[optional_struct]
 #[derive(PartialEq, Debug, Serialize, Deserialize, Clone)]
-pub(crate) struct CliContext {
-    pub(crate) actors_bin_dir: PathBuf,
+pub struct CliContext {
+    pub actors_bin_dir: PathBuf,
 }
 
 impl CliContext {
     /// Public function helping to initialize a [ Context ] object.
-    pub(crate) fn new() -> anyhow::Result<Self> {
+    pub fn new() -> anyhow::Result<Self> {
         let root_path = env::current_dir()?;
         let config_file_path = root_path.join(CONFIG_FILE);
         // fetch config from configuration file if it exists
