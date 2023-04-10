@@ -10,6 +10,12 @@ use clap::{Parser, Subcommand};
 
 #[derive(Parser)]
 #[command(name = "Kythera")]
+#[command(bin_name = "kythera")]
+#[command(author = "Polyphene")]
+#[command(
+    about = "Kythera is a Toolset for Filecoin Virtual Machine Native Actor development, testing and deployment."
+)]
+#[command(version)] // Read from `Cargo.toml`
 struct Cli {
     #[command(subcommand)]
     command: Option<Commands>,
