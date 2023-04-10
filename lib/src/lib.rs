@@ -361,5 +361,5 @@ mod tests {
         assert_eq!(tester.account.0, 102);
 
         assert!(tester.target_actor.is_none());
-    }e
+    }
 }
