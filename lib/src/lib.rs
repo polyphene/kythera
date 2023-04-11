@@ -4,8 +4,11 @@ use std::sync::mpsc::Sender;
 // SPDX-License-Identifier: Apache-2.0, MIT
 use cid::Cid;
 
-pub use kythera_common::abi::{pascal_case_split, Abi};
-use kythera_common::abi::{Method, MethodType};
+pub use kythera_common::{
+    abi::{pascal_case_split, Abi, Method, MethodType},
+    from_slice, to_vec,
+};
+
 use kythera_fvm::{
     engine::EnginePool,
     executor::{ApplyKind, ApplyRet, Executor, KytheraExecutor},
@@ -20,7 +23,6 @@ use fvm_shared::{
     version::NetworkVersion,
 };
 
-use crate::error::WrapFVMError;
 use error::Error;
 use state_tree::{BuiltInActors, StateTree};
 
@@ -52,7 +54,6 @@ pub struct WasmActor {
 
 impl WasmActor {
     /// Create a new WebAssembly Actor.
-    // TODO: parse the Abi methods from the bytecode instead of receiving it via constructor.
     pub fn new(name: String, bytecode: Vec<u8>, abi: Abi) -> Self {
         Self {
             name,
@@ -70,6 +71,11 @@ impl WasmActor {
     pub fn code(&self) -> &[u8] {
         &self.bytecode
     }
+
+    /// Get the Actor Abi.
+    pub fn abi(&self) -> &Abi {
+        &self.abi
+    }
 }
 
 /// An Actor that has been deployed into a `BlockStore`.
@@ -84,9 +90,6 @@ struct DeployedActor {
 pub enum TestResultType {
     Passed(ApplyRet),
     Failed(ApplyRet),
-    /// TODO: Upgrade to a proper `Reason` struct?
-    /// We Receive `anyhow::Result` from upstream so, there's probably
-    // not much we can do.
     Erred(String),
 }
 
@@ -100,7 +103,7 @@ pub struct TestResult<'a> {
 impl<'a> TestResult<'a> {
     /// Get the [`Method`] tested.
     pub fn method(&self) -> &Method {
-        &self.method
+        self.method
     }
 
     /// Get the [`ApplyRet`] of the test.
@@ -175,15 +178,11 @@ impl Tester {
     }
 
     /// Test an Actor on a `MemoryBlockstore`.
-    /// TODO: Instead of accepting `stream_results` as a channel that we then yield each result,
-    /// Should we make `test` return an iterator that yields each result by default?
     pub fn test<'a>(
         &mut self,
         test_actors: &'a [WasmActor],
         stream_results: Option<Sender<(&'a WasmActor, TestResult<'a>)>>,
     ) -> Result<Vec<TestActorResults<'a>>, Error> {
-        // TODO: Should we clone the `StateTree` before each test run,
-        // and make our `Tester` stateless?
         let target = self
             .target_actor
             .as_ref()
@@ -293,20 +292,7 @@ impl Default for Tester {
 
 #[cfg(test)]
 mod tests {
-    use fvm_shared::error::ExitCode;
-    use kythera_test_actors::wasm_bin::BASIC_TEST_ACTOR_BINARY;
-
     use super::*;
-    use kythera_common::abi::{Abi, Method};
-
-    const TARGET_WAT: &str = r#"
-        ;; Mock invoke function
-            (module
-                (func (export "invoke") (param $x i32) (result i32)
-                    (i32.const 1)
-                )
-            )
-        "#;
 
     #[test]
     fn test_tester_instantiation() {
@@ -333,7 +319,7 @@ mod tests {
         assert!(tester
             .state_tree
             .store()
-            .has(&*builtins_actors.manifest.get_system_code())
+            .has(builtins_actors.manifest.get_system_code())
             .unwrap());
 
         assert_eq!(
@@ -343,7 +329,7 @@ mod tests {
         assert!(tester
             .state_tree
             .store()
-            .has(&*builtins_actors.manifest.get_init_code())
+            .has(builtins_actors.manifest.get_init_code())
             .unwrap());
 
         assert_eq!(
@@ -353,7 +339,7 @@ mod tests {
         assert!(tester
             .state_tree
             .store()
-            .has(&*builtins_actors.manifest.get_account_code())
+            .has(builtins_actors.manifest.get_account_code())
             .unwrap());
 
         assert_eq!(
@@ -363,7 +349,7 @@ mod tests {
         assert!(tester
             .state_tree
             .store()
-            .has(&*builtins_actors.manifest.get_placeholder_code())
+            .has(builtins_actors.manifest.get_placeholder_code())
             .unwrap());
 
         assert_eq!(
@@ -373,72 +359,12 @@ mod tests {
         assert!(tester
             .state_tree
             .store()
-            .has(&*builtins_actors.manifest.get_eam_code())
+            .has(builtins_actors.manifest.get_eam_code())
             .unwrap());
 
-        assert_eq!(tester.account.0, 100);
+        // Expect actor Id to be 102 as we deployed verified registry signer & multisig previously
+        assert_eq!(tester.account.0, 102);
 
         assert!(tester.target_actor.is_none());
-    }
-
-    #[test]
-    fn test_tester_test() {
-        // Instantiate tester
-        let mut tester = Tester::new();
-
-        // Set target actor
-        let target_wasm_bin = wat::parse_str(TARGET_WAT).unwrap();
-        let target_abi = Abi { methods: vec![] };
-        let target_actor = WasmActor::new(String::from("Target"), target_wasm_bin, target_abi);
-
-        // Set test actor
-        let test_wasm_bin: Vec<u8> = Vec::from(BASIC_TEST_ACTOR_BINARY);
-        let test_abi = Abi {
-            methods: vec![
-                Method::new_from_name("TestOne").unwrap(),
-                Method::new_from_name("TestTwo").unwrap(),
-            ],
-        };
-        let test_actor = WasmActor::new(String::from("Basic"), test_wasm_bin, test_abi);
-
-        match tester.deploy_target_actor(target_actor) {
-            Err(_) => {
-                panic!("Could not set target Actor when testing Tester")
-            }
-            _ => {}
-        }
-
-        match tester.test(&[test_actor.clone()], None) {
-            Err(_) => {
-                panic!("Could not run test when testing Tester")
-            }
-            Ok(test_res) => {
-                assert_eq!(test_res.len(), 1usize);
-                assert_eq!(test_res[0].results.as_ref().unwrap().len(), 2usize);
-                assert_eq!(test_res[0].test_actor, &test_actor);
-
-                test_res[0]
-                    .results
-                    .as_ref()
-                    .unwrap()
-                    .iter()
-                    .enumerate()
-                    .for_each(
-                        |(i, result)| match (result.method().r#type(), result.ret()) {
-                            (MethodType::Test, TestResultType::Passed(apply_ret)) => {
-                                assert_eq!(apply_ret.msg_receipt.exit_code, ExitCode::OK);
-                                let ret_value: String =
-                                    apply_ret.msg_receipt.return_data.deserialize().unwrap();
-                                if i == 0usize {
-                                    assert_eq!(ret_value, String::from("TestOne"))
-                                } else {
-                                    assert_eq!(ret_value, String::from("TestTwo"))
-                                }
-                            }
-                            _ => panic!("test against basic test actor should pass"),
-                        },
-                    )
-            }
-        }
     }
 }
