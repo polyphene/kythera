@@ -14,6 +14,7 @@ use kythera_lib::{pascal_case_split, Abi, WasmActor};
 use walkdir::WalkDir;
 
 /// A test structure composed by the target Actor and its multiple tests.
+#[derive(Clone, Debug)]
 pub struct Test {
     pub actor: WasmActor,
     pub tests: Vec<WasmActor>,
