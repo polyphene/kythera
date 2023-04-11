@@ -1,6 +1,6 @@
 // Copyright 2023 Polyphene.
 // SPDX-License-Identifier: Apache-2.0, MIT
-// constants for wasm build artifacts
+// Constants for wasm build artifacts.
 
 macro_rules! wasm_bin {
     ($x: expr) => {
@@ -15,4 +15,6 @@ macro_rules! wasm_bin {
 
 // Integration test actors.
 pub const BASIC_TEST_ACTOR_BINARY: &[u8] = include_bytes!(wasm_bin!("basic_test_actor"));
+pub const CONSTRUCTOR_SETUP_TEST_ACTOR_BINARY: &[u8] =
+    include_bytes!(wasm_bin!("constructor_setup_test_actor"));
 pub const BUILTIN_TEST_ACTOR_BINARY: &[u8] = include_bytes!(wasm_bin!("builtin_test_actor"));

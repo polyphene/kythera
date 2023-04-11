@@ -759,6 +759,20 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "13418e745008f7349ec7e449155f419a61b92b58a99cc3616942b926825ec76b"
 
 [[package]]
+name = "constructor_setup_test_actor"
+version = "0.1.0"
+dependencies = [
+ "cid",
+ "frc42_dispatch",
+ "fvm_ipld_blockstore",
+ "fvm_ipld_encoding 0.3.3",
+ "fvm_sdk 3.0.0",
+ "fvm_shared 3.1.0",
+ "serde",
+ "serde_tuple",
+]
+
+[[package]]
 name = "convert_case"
 version = "0.4.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -3013,6 +3027,7 @@ dependencies = [
  "anyhow",
  "cid",
  "fvm",
+ "fvm_ipld_blockstore",
  "fvm_ipld_encoding 0.3.3",
  "fvm_shared 3.1.0",
  "multihash",

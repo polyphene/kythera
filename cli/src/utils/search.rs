@@ -51,8 +51,8 @@ fn set_abi_extension<P: AsRef<Path>>(path: P) -> anyhow::Result<String> {
         .map_err(|_| anyhow!("Failed to convert abi path to string"))
 }
 
-/// Create a WebAssembly actor from a binary and an Abi.
-fn create_actor<P: AsRef<Path>>(binary_path: P) -> anyhow::Result<WasmActor> {
+/// Read a WebAssembly actor from a binary and an Abi.
+fn read_actor<P: AsRef<Path>>(binary_path: P) -> anyhow::Result<WasmActor> {
     let abi_path = set_abi_extension(&binary_path)?;
 
     let (file_name, bytecode) = read_file_data(binary_path)?;
@@ -96,9 +96,12 @@ pub fn search_files<P: AsRef<Path>>(path: P) -> anyhow::Result<Vec<Test>> {
     let mut tests = vec![];
     for target_actor_path in target_actor_paths {
         // Get target actor.
-        let Ok(target_actor) = create_actor(&target_actor_path) else {
-            log::error!("Could not get target Actor for binary {target_actor_path}");
-            continue;
+        let target_actor = match read_actor(&target_actor_path) {
+            Ok(target_actor) => target_actor,
+            Err(err) => {
+                log::error!("Could not get target Actor for binary {target_actor_path}: {err}");
+                continue;
+            }
         };
 
         let mut actor_tests = vec![];
@@ -122,7 +125,7 @@ pub fn search_files<P: AsRef<Path>>(path: P) -> anyhow::Result<Vec<Test>> {
             }
 
             if test_path.is_file() {
-                let Ok(test) = create_actor(test_path) else {
+                let Ok(test) = read_actor(test_path) else {
                         log::error!("Could not read test file {}", test_path.display());
                         return false;
                 };
@@ -134,7 +137,7 @@ pub fn search_files<P: AsRef<Path>>(path: P) -> anyhow::Result<Vec<Test>> {
                     .filter_map(Result::ok)
                     .filter_map(|tp| tp.into_path().into_os_string().into_string().ok())
                     .filter(|tp| tp.ends_with(".wasm"))
-                    .filter_map(|tp| match create_actor(&tp) {
+                    .filter_map(|tp| match read_actor(&tp) {
                         Ok(actor_test) => Some(actor_test),
                         Err(err) => {
                             log::error!("Could not read test file {}: {err}", tp);
@@ -205,16 +208,14 @@ mod tests {
         let dir = tempdir().unwrap();
         let dir_path = dir.path();
         let target_actor_abi = Abi {
-            methods: vec![
-                Method::new_from_name("Constructor").unwrap(),
-                Method::new_from_name("Transfer").unwrap(),
-            ],
+            constructor: Method::new_from_name("Constructor").ok(),
+            set_up: None,
+            methods: vec![Method::new_from_name("Transfer").unwrap()],
         };
         let test_actor_abi = Abi {
-            methods: vec![
-                Method::new_from_name("Constructor").unwrap(),
-                Method::new_from_name("TestTransfer").unwrap(),
-            ],
+            constructor: Method::new_from_name("Constructor").ok(),
+            set_up: None,
+            methods: vec![Method::new_from_name("TestTransfer").unwrap()],
         };
 
         // Create target & test actors files.
@@ -238,22 +239,19 @@ mod tests {
         let dir = tempdir().unwrap();
         let dir_path = dir.path();
         let target_actor_abi = Abi {
-            methods: vec![
-                Method::new_from_name("Constructor").unwrap(),
-                Method::new_from_name("Transfer").unwrap(),
-            ],
+            constructor: Method::new_from_name("Constructor").ok(),
+            set_up: None,
+            methods: vec![Method::new_from_name("Transfer").unwrap()],
         };
         let test_1_actor_abi = Abi {
-            methods: vec![
-                Method::new_from_name("Constructor").unwrap(),
-                Method::new_from_name("TestTransferOne").unwrap(),
-            ],
+            constructor: Method::new_from_name("Constructor").ok(),
+            set_up: None,
+            methods: vec![Method::new_from_name("TestTransferOne").unwrap()],
         };
         let test_2_actor_abi = Abi {
-            methods: vec![
-                Method::new_from_name("Constructor").unwrap(),
-                Method::new_from_name("TestTransferTwo").unwrap(),
-            ],
+            constructor: Method::new_from_name("Constructor").ok(),
+            set_up: None,
+            methods: vec![Method::new_from_name("TestTransferTwo").unwrap()],
         };
 
         // Create target actor files.
@@ -287,28 +285,24 @@ mod tests {
         let dir_path = dir.path();
 
         let target_actor_abi = Abi {
-            methods: vec![
-                Method::new_from_name("Constructor").unwrap(),
-                Method::new_from_name("Transfer").unwrap(),
-            ],
+            constructor: Method::new_from_name("Constructor").ok(),
+            set_up: None,
+            methods: vec![Method::new_from_name("Transfer").unwrap()],
         };
         let test_1_actor_abi = Abi {
-            methods: vec![
-                Method::new_from_name("Constructor").unwrap(),
-                Method::new_from_name("TestTransferOne").unwrap(),
-            ],
+            constructor: Method::new_from_name("Constructor").ok(),
+            set_up: None,
+            methods: vec![Method::new_from_name("TestTransferOne").unwrap()],
         };
         let test_2_1_actor_abi = Abi {
-            methods: vec![
-                Method::new_from_name("Constructor").unwrap(),
-                Method::new_from_name("TestTransferTwoOne").unwrap(),
-            ],
+            constructor: Method::new_from_name("Constructor").ok(),
+            set_up: None,
+            methods: vec![Method::new_from_name("TestTransferTwoOne").unwrap()],
         };
         let test_2_2_actor_abi = Abi {
-            methods: vec![
-                Method::new_from_name("Constructor").unwrap(),
-                Method::new_from_name("TestTransferTwoTwo").unwrap(),
-            ],
+            constructor: Method::new_from_name("Constructor").ok(),
+            set_up: None,
+            methods: vec![Method::new_from_name("TestTransferTwoTwo").unwrap()],
         };
 
         // Create target actor files.
