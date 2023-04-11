@@ -1,43 +1,32 @@
 // Copyright 2023 Polyphene.
 // SPDX-License-Identifier: Apache-2.0, MIT
 
-use std::path::PathBuf;
+mod commands;
+mod utils;
 
-use clap::{Args, Parser};
-use kythera_lib::Tester;
+use commands::test;
 
-mod search;
+use clap::{Parser, Subcommand};
 
-/// Kythera, a Toolset for Filecoin Virtual Machine Native Actor development, testing and deployment.
-#[derive(Parser, Debug)]
-#[command(version)]
-enum MainArgs {
+#[derive(Parser)]
+#[command(name = "Kythera")]
+#[command(author, version, about)]
+struct Cli {
+    #[command(subcommand)]
+    command: Option<Commands>,
+}
+
+#[derive(Subcommand)]
+enum Commands {
     #[clap(visible_alias = "t")]
-    Test(TestArgs),
+    Test(test::TestArgs),
 }
 
-/// Run an Actor tests.
-#[derive(Args, Debug)]
-struct TestArgs {
-    /// Actor files dir.
-    path: PathBuf,
-}
-
-/// Test
-fn test(args: TestArgs) -> anyhow::Result<()> {
-    let tests = search::search_files(&args.path)?;
-    for test in tests {
-        let mut tester = Tester::new();
-        tester.deploy_target_actor(test.actor)?;
-        tester.test(&test.tests, None)?;
-    }
-    Ok(())
-}
 fn main() -> anyhow::Result<()> {
-    let args = MainArgs::parse();
-    match args {
-        MainArgs::Test(args) => test(args)?,
-    };
-
+    let cli = Cli::parse();
+    match &cli.command {
+        Some(Commands::Test(args)) => test::test(args)?,
+        None => {}
+    }
     Ok(())
 }
