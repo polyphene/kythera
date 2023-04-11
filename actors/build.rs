@@ -17,7 +17,6 @@ const TEST_ACTORS: &[&str] = &[
 ];
 
 const FILES_TO_WATCH: &[&str] = &["Cargo.toml", "src", "actors"];
-
 fn main() -> Result<(), Box<dyn Error>> {
     // Cargo executable location.
     let cargo = std::env::var_os("CARGO").expect("no CARGO env var");
