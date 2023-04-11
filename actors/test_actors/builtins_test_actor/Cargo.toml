@@ -1,5 +1,5 @@
 [package]
-name = "cheatcodes_test_actor"
+name = "builtins-test-actor"
 version = "0.1.0"
 edition = "2021"
 publish=false

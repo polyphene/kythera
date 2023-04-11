@@ -6,12 +6,17 @@ use std::path::Path;
 use std::process::{Command, Stdio};
 use std::thread;
 
-const ACTORS: &[&str] = &[
-    "basic_test_actor",
-    "builtin_test_actor",
-    "cheatcodes_test_actor",
-    "constructor_setup_test_actor",
+const ACTORS: &[&str] = &[];
+
+#[cfg(feature = "testing")]
+const TEST_ACTORS: &[&str] = &[
+    "cheatcodes-actor",
+    "builtins-test-actor",
+    "cheatcodes-test-actor",
+    "constructor-setup-test-actor",
 ];
+
+const FILES_TO_WATCH: &[&str] = &["Cargo.toml", "src", "actors"];
 
 fn main() -> Result<(), Box<dyn Error>> {
     // Cargo executable location.
@@ -28,14 +33,26 @@ fn main() -> Result<(), Box<dyn Error>> {
         Path::new(&std::env::var_os("CARGO_MANIFEST_DIR").expect("CARGO_MANIFEST_DIR unset"))
             .join("Cargo.toml");
 
-    for file in ["Cargo.toml", "src", "actors"] {
+    let mut files_to_watch = FILES_TO_WATCH.to_vec();
+
+    if cfg!(feature = "testing") {
+        files_to_watch = [files_to_watch, vec!["test_actors"]].concat();
+    }
+
+    for file in files_to_watch {
         println!("cargo:rerun-if-changed={}", file);
     }
 
-    // Cargo build command for all actors at once.
+    let mut actors = ACTORS.to_vec();
+
+    if cfg!(feature = "testing") {
+        actors = [ACTORS, TEST_ACTORS].concat();
+    }
+
+    // Cargo build command for all test_actors at once.
     let mut cmd = Command::new(cargo);
     cmd.arg("build")
-        .args(ACTORS.iter().map(|pkg| "-p=".to_owned() + pkg))
+        .args(actors.iter().map(|pkg| "-p=".to_owned() + pkg))
         .arg("--target=wasm32-unknown-unknown")
         .arg("--profile=wasm")
         .arg("--locked")

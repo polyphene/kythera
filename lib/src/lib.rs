@@ -22,7 +22,7 @@ mod state_tree;
 
 /// Main interface to test `Actor`s with Kythera.
 pub struct Tester {
-    // Builtin actors root Cid used in the Machine
+    // Builtin test_actors root Cid used in the Machine
     builtin_actors: BuiltInActors,
     // State tree constructed before instantiating the Machine
     state_tree: StateTree,
@@ -163,7 +163,7 @@ impl Tester {
             Err(_) => panic!("Actor Id should be valid"),
         };
 
-        // Iterate over all test actors
+        // Iterate over all test test_actors
         Ok(test_actors
             .iter()
             .map(|test_actor| {
@@ -329,7 +329,7 @@ mod tests {
         // Instantiate tester
         let tester = Tester::new();
 
-        // Testing that we got proper CIDs for our revision for builtin actors and that they are
+        // Testing that we got proper CIDs for our revision for builtin test_actors and that they are
         // set in the state tree
         assert_eq!(tester.builtin_actors.root, builtins_actors.root);
         assert!(tester

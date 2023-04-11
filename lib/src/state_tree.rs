@@ -91,7 +91,7 @@ impl StateTree {
         Ok(())
     }
 
-    /// Load the built-in actors into the `Blockstore`.
+    /// Load the built-in test_actors into the `Blockstore`.
     /// And activate them on the `StateTree`.
     pub fn load_builtin_actors(&mut self) -> BuiltInActors {
         // Load the built-in Actors

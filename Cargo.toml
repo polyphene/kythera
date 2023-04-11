@@ -5,8 +5,9 @@ members = [
     "lib",
     "fvm",
     "common",
-    "test_actors",
-    "test_actors/actors/*",
+    "actors",
+    "actors/test_actors/*",
+    "actors/actors/*",
 ]
 
 
