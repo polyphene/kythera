@@ -27,7 +27,7 @@ jobs:
         id: filter
         with:
           filters: |
-            kythera: cli/Cargo.toml
+            kythera-cli: cli/Cargo.toml
 
   publish:
     name: Publish ${{ matrix.crate }}
