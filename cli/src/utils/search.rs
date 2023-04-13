@@ -126,9 +126,12 @@ pub fn search_files<P: AsRef<Path>>(path: P) -> anyhow::Result<Vec<Test>> {
             }
 
             if test_path.is_file() {
-                let Ok(test) = read_actor(test_path) else {
-                        log::error!("Could not read test file {}", test_path.display());
+                let test = match read_actor(test_path) {
+                    Ok(test) => test,
+                    Err(err) => {
+                        log::error!("Could not read test file {}: {err}", test_path.display());
                         return false;
+                    }
                 };
                 actor_tests.push(test);
             } else {

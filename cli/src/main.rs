@@ -5,6 +5,10 @@ mod commands;
 mod utils;
 
 use commands::test;
+use env_logger::Target;
+use log::LevelFilter;
+
+use std::io::Write;
 
 use clap::{Parser, Subcommand};
 
@@ -23,6 +27,13 @@ enum Commands {
 }
 
 fn main() -> anyhow::Result<()> {
+    env_logger::builder()
+        .filter_level(LevelFilter::Info)
+        .filter(Some("kythera_lib"), LevelFilter::Info)
+        .format(|buf, record| writeln!(buf, "{}", record.args()))
+        .target(Target::Stdout)
+        .init();
+
     let cli = Cli::parse();
     match &cli.command {
         Some(Commands::Test(args)) => test::test(args)?,

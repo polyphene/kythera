@@ -1,6 +1,9 @@
 // Copyright 2023 Polyphene.
 // SPDX-License-Identifier: Apache-2.0, MIT
 
+#[cfg(feature = "colors")]
+use colored::Colorize;
+
 pub use kythera_common::{
     abi::{pascal_case_split, Abi, Method, MethodType},
     from_slice, to_vec,
@@ -108,9 +111,15 @@ impl fmt::Display for TestResult {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(f, "test {} ... ", self.method(),)?;
         if self.passed() {
-            write!(f, "ok")
+            let ok = "ok";
+            #[cfg(feature = "colors")]
+            let ok = ok.green();
+            write!(f, "{ok}")
         } else {
-            write!(f, "FAILED")
+            let failed = "FAILED";
+            #[cfg(feature = "colors")]
+            let failed = failed.bright_red();
+            write!(f, "{failed}")
         }
     }
 }
@@ -188,6 +197,8 @@ impl Tester {
             Err(_) => panic!("Actor Id should be valid"),
         };
 
+        log::info!("Running Tests for Actor : {}", target.name);
+        log::info!("Testing {} test files", test_actors.len());
         // Iterate over all test actors
         Ok(test_actors
             .iter()
@@ -207,8 +218,6 @@ impl Tester {
                         }
                     }
                 };
-
-                log::info!("Testing Actor {}", target.name);
 
                 let root = self.state_tree.flush();
                 let blockstore = self.state_tree.store().clone();
@@ -277,6 +286,11 @@ impl Tester {
                 // one possible concurrent engine.
                 // The following steps will not end up in a result. Either we could finalize message
                 // handling and we return the related ApplyRet or we return nothing.
+                log::info!(
+                    "testing {} {} methods",
+                    test_actor.name(),
+                    test_actor.abi().methods().len()
+                );
                 TestActorResults {
                     test_actor,
                     results: Ok(
@@ -296,7 +310,7 @@ impl Tester {
                                     target_id.clone().into(),
                                 );
 
-                                log::info!(
+                                log::debug!(
                                     "Testing test {}.{}() for Actor {}",
                                     test_actor.name,
                                     method.name(),
