@@ -4,11 +4,10 @@
 use crate::externs::FakeExterns;
 use crate::machine::KytheraMachine;
 use cid::Cid;
-use fvm::call_manager::DefaultCallManager;
 use fvm::engine::EnginePool;
 use fvm::executor::DefaultExecutor;
-use fvm::DefaultKernel;
 
+use crate::kernel::KytheraKernel;
 pub use fvm::executor::Executor as _;
 pub use fvm::executor::{ApplyFailure, ApplyKind, ApplyRet};
 use fvm::machine::{Machine, NetworkConfig};
@@ -25,9 +24,7 @@ const DEFAULT_BASE_FEE: u64 = 100;
 
 /// Wrapper around `fvm` Executor with sane defaults.
 pub struct KytheraExecutor {
-    inner: DefaultExecutor<
-        DefaultKernel<DefaultCallManager<KytheraMachine<MemoryBlockstore, FakeExterns>>>,
-    >,
+    inner: DefaultExecutor<KytheraKernel>,
     account_address: Address,
     test_address: Address,
     target_actor_id: RawBytes,

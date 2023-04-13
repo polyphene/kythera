@@ -225,6 +225,7 @@ fn test_cheatcodes() {
         Ok(test_res) => {
             assert_eq!(test_res.len(), 1);
             assert_eq!(test_res[0].results.as_ref().unwrap().len(), 1);
+            dbg!(&test_res[0].results);
             assert_eq!(test_res[0].test_actor, &test_actor);
             test_res[0]
                 .results

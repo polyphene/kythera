@@ -6,17 +6,18 @@ use std::path::Path;
 use std::process::{Command, Stdio};
 use std::thread;
 
-const ACTORS: &[&str] = &[];
+const ACTORS: &[&str] = &["cheatcodes-actor"];
 
 #[cfg(feature = "testing")]
 const TEST_ACTORS: &[&str] = &[
-    "cheatcodes-actor",
+    "basic-test-actor",
     "builtins-test-actor",
     "cheatcodes-test-actor",
     "constructor-setup-test-actor",
 ];
 
 const FILES_TO_WATCH: &[&str] = &["Cargo.toml", "src", "actors"];
+
 fn main() -> Result<(), Box<dyn Error>> {
     // Cargo executable location.
     let cargo = std::env::var_os("CARGO").expect("no CARGO env var");

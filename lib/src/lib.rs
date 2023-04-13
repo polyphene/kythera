@@ -115,6 +115,7 @@ impl Tester {
         let mut state_tree = StateTree::new();
 
         let builtin_actors = state_tree.load_builtin_actors();
+        state_tree.load_kythera_actors();
         let account = state_tree.create_account(*builtin_actors.manifest.get_account_code());
 
         Self {

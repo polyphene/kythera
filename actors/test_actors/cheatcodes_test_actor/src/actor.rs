@@ -14,13 +14,6 @@ use fvm_shared::sys::SendFlags;
 
 #[no_mangle]
 fn invoke(_input: u32) -> u32 {
-    std::panic::set_hook(Box::new(|info| {
-        sdk::vm::abort(
-            ExitCode::USR_ASSERTION_FAILED.value(),
-            Some(&format!("{info}")),
-        )
-    }));
-
     let method_num = sdk::message::method_number();
     match_method!(
         method_num,
@@ -28,7 +21,7 @@ fn invoke(_input: u32) -> u32 {
             "TestWarp" => {
                 TestWarp();
 
-                NO_DATA_BLOCK_ID
+                return NO_DATA_BLOCK_ID;
             },
             _ => {
                 sdk::vm::abort(
@@ -40,7 +33,7 @@ fn invoke(_input: u32) -> u32 {
     )
 }
 
-// Checks that all relevant builtins are deployed at a correct actor Id in Kythera
+// Checks that all relevant builtins are deployed at a correct actor Id in Kythera.
 #[allow(non_snake_case)]
 fn TestWarp() {
     let timestamp = fvm_sdk::network::tipset_timestamp();
@@ -48,12 +41,11 @@ fn TestWarp() {
     assert_eq!(timestamp, 0u64);
 
     let new_timestamp = 10000u64;
-    let bytes = fvm_ipld_encoding::to_vec(&new_timestamp).unwrap();
 
     let res = fvm_sdk::send::send(
         &Address::new_id(98),
         112632689,
-        Some(IpldBlock::serialize(DAG_CBOR, bytes.as_slice()).unwrap()),
+        Some(IpldBlock::serialize(DAG_CBOR, &new_timestamp).unwrap()),
         TokenAmount::zero(),
         None,
         SendFlags::empty(),
@@ -62,7 +54,7 @@ fn TestWarp() {
 
     assert_eq!(res.exit_code, ExitCode::OK);
 
-    let timestamp = fvm_sdk::network::tipset_timestamp();
+    let nc_timestamp = unsafe { fvm_sdk::sys::network::context().unwrap().timestamp };
 
-    assert_eq!(timestamp, new_timestamp);
+    assert_eq!(new_timestamp, nc_timestamp);
 }

@@ -137,6 +137,16 @@ impl<'de> serde::Deserialize<'de> for Abi {
     }
 }
 
+impl Default for Abi {
+    fn default() -> Self {
+        Self {
+            constructor: None,
+            set_up: None,
+            methods: vec![],
+        }
+    }
+}
+
 /// Method number indicator for calling Actor methods.
 pub type MethodNum = u64;
 

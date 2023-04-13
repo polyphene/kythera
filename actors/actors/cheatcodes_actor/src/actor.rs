@@ -2,39 +2,39 @@
 // SPDX-License-Identifier: Apache-2.0, MIT
 
 use frc42_dispatch::match_method;
-use fvm_ipld_encoding::DAG_CBOR;
-use fvm_sdk as sdk;
+use fvm_ipld_encoding::{de::DeserializeOwned, RawBytes};
+use fvm_sdk::NO_DATA_BLOCK_ID;
 use fvm_shared::error::ExitCode;
-use sdk::sys::ErrorNumber;
-use serde::ser;
-use thiserror::Error;
 
-#[derive(Error, Debug)]
-enum IpldError {
-    #[error("ipld encoding error: {0}")]
-    Encoding(#[from] fvm_ipld_encoding::Error),
-    #[error("ipld blockstore error: {0}")]
-    Blockstore(#[from] ErrorNumber),
-}
+/// Deserialize message parameters into given struct.
+pub fn deserialize_params<D: DeserializeOwned>(params: u32) -> D {
+    let params = fvm_sdk::message::params_raw(params)
+        .expect("Could not get message parameters")
+        .expect("Expected message parameters but got none");
 
-fn return_ipld<T>(value: &T) -> std::result::Result<u32, IpldError>
-where
-    T: ser::Serialize + ?Sized,
-{
-    let bytes = fvm_ipld_encoding::to_vec(value)?;
-    Ok(sdk::ipld::put_block(DAG_CBOR, bytes.as_slice())?)
+    let params = RawBytes::new(params.data);
+
+    params
+        .deserialize()
+        .expect("Should be able to deserialize message params into arguments of called method")
 }
 
 #[no_mangle]
-fn invoke(_input: u32) -> u32 {
-    let method_num = sdk::message::method_number();
+fn invoke(input: u32) -> u32 {
+    let method_num = fvm_sdk::message::method_number();
     match_method!(
         method_num,
         {
-            "TestOne" => return_ipld(TestOne()).unwrap(),
-            "TestTwo" => return_ipld(TestTwo()).unwrap(),
+            "Warp" => {
+                // Ensure that the message params can be deserialized.
+                let new_timestamp: u64 = deserialize_params(input);
+
+                Warp(new_timestamp);
+
+                NO_DATA_BLOCK_ID
+            },
             _ => {
-                sdk::vm::abort(
+                fvm_sdk::vm::abort(
                     ExitCode::USR_UNHANDLED_MESSAGE.value(),
                     Some("Unknown method number"),
                 );
@@ -43,12 +43,7 @@ fn invoke(_input: u32) -> u32 {
     )
 }
 
+/// Warp the machine context to a given timestamp. Aside the handling of the message in the Kernel,
+/// there is currently nNo additional logic is currently needed in the execution.
 #[allow(non_snake_case)]
-fn TestOne() -> &'static str {
-    "TestOne"
-}
-
-#[allow(non_snake_case)]
-fn TestTwo() -> &'static str {
-    "TestTwo"
-}
+fn Warp(_new_timestamp: u64) {}

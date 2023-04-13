@@ -18,7 +18,7 @@ pub const CHEATCODES_ACTOR_BINARY: &[u8] = include_bytes!(wasm_bin!("cheatcodes_
 #[cfg(feature = "testing")]
 pub mod test_actors {
     // Integration test test_actors.
-    pub const BASIC_TEST_ACTOR_BINARY: &[u8] = include_bytes!(wasm_bin!("cheatcodes_actor"));
+    pub const BASIC_TEST_ACTOR_BINARY: &[u8] = include_bytes!(wasm_bin!("basic_test_actor"));
     pub const BUILTINS_TEST_ACTOR_BINARY: &[u8] = include_bytes!(wasm_bin!("builtins_test_actor"));
     pub const CHEATCODES_TEST_ACTOR_BINARY: &[u8] =
         include_bytes!(wasm_bin!("cheatcodes_test_actor"));
