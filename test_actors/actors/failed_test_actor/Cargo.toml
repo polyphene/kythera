@@ -1,0 +1,13 @@
+[package]
+name = "failed_test_actor"
+version = "0.1.0"
+edition = "2021"
+publish=false
+
+[target.'cfg(target_arch = "wasm32")'.dependencies]
+frc42_dispatch = "3.1.0"
+fvm_sdk = {  version = "3.0.0" }
+fvm_shared = {  version = "3.1.0" }
+
+[lib]
+crate-type = ["cdylib"]
