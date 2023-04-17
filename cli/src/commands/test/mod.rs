@@ -34,6 +34,8 @@ pub(crate) fn test(args: &TestArgs) -> anyhow::Result<()> {
     Ok(())
 }
 
+/// Stream the results received from `Tester::test,
+/// so that users see the result of each test as soon as it finishes.
 fn stream_results(stream: Receiver<(WasmActor, TestResult)>, sync_tx: SyncSender<()>) {
     let mut tests_failed = vec![];
     let mut tests_passed = vec![];
