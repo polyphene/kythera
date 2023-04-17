@@ -61,7 +61,7 @@ fn stream_results(
         match test_result.ret() {
             TestResultType::Passed(apply_ret) | TestResultType::Failed(apply_ret) => {
                 log::info!("(gas consumption: {})", apply_ret.msg_receipt.gas_used);
-                if verbosity >= 1 {
+                if verbosity >= 2 {
                     print_verbose_traces(apply_ret);
                 }
                 if test_result.passed() {
