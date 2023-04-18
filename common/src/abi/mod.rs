@@ -39,7 +39,7 @@ pub fn pascal_case_split(s: &str) -> Vec<&str> {
 
 /// `Abi` is the structure we use internally to deal with Actor Binary Interface. It contains all
 /// exposed [`Method`] from a given Actor.
-#[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord)]
+#[derive(Clone, Default, Debug, PartialEq, Eq, PartialOrd, Ord)]
 pub struct Abi {
     pub constructor: Option<Method>,
     pub set_up: Option<Method>,
@@ -134,16 +134,6 @@ impl<'de> serde::Deserialize<'de> for Abi {
             }
         }
         deserializer.deserialize_seq(AbiVisitor)
-    }
-}
-
-impl Default for Abi {
-    fn default() -> Self {
-        Self {
-            constructor: None,
-            set_up: None,
-            methods: vec![],
-        }
     }
 }
 

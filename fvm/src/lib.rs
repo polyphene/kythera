@@ -10,10 +10,6 @@ pub mod engine {
 }
 
 pub mod executor;
-pub mod machine {
-    pub use fvm::machine::{DefaultMachine as KytheraMachine, Machine, Manifest, NetworkConfig};
-}
-
 pub mod state_tree {
     pub use fvm::state_tree::ActorState;
     pub use fvm::state_tree::StateTree;
@@ -25,4 +21,5 @@ mod call_manager;
 mod context;
 pub mod externs;
 mod kernel;
+pub mod machine;
 pub(crate) mod utils;

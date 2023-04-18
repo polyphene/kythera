@@ -90,6 +90,7 @@ impl StateTree {
 
         log::trace!("Setting Actor {} on the BlockStore", name);
         self.inner.set_actor(id, actor_state);
+
         Ok(())
     }
 
@@ -422,11 +423,13 @@ impl StateTree {
         actor: &WasmActor,
         balance: TokenAmount,
     ) -> Result<Address, Error> {
-        let actor_id = rand::random();
-        let actor_address = Address::new_id(actor_id);
-
-        self.deploy_actor_from_bin_at_address(&actor_address, actor, balance)?;
-
-        Ok(actor_address)
+        let actor_address = Address::new_actor(actor.name.as_bytes());
+        let actor_id = self
+            .inner
+            .register_new_address(&actor_address)
+            .expect("Should be able to register verified registry multisig root address");
+        let actor_address_id = Address::new_id(actor_id);
+        self.deploy_actor_from_bin_at_address(&actor_address_id, actor, balance)?;
+        Ok(actor_address_id)
     }
 }

@@ -1,5 +1,4 @@
-use crate::context::OverrideContext;
-use crate::externs::FakeExterns;
+use crate::kernel::KytheraKernel;
 use crate::machine::KytheraMachine;
 use anyhow::anyhow;
 use cid::Cid;
@@ -9,21 +8,161 @@ use fvm::gas::{Gas, GasTracker};
 use fvm::kernel::{Block, ExecutionError};
 use fvm::machine::Machine;
 use fvm::state_tree::ActorState;
-use fvm::{DefaultKernel, Kernel};
-use fvm_ipld_blockstore::MemoryBlockstore;
+use fvm::Kernel;
 use fvm_ipld_encoding::from_slice;
 use fvm_shared::address::Address;
 use fvm_shared::econ::TokenAmount;
 use fvm_shared::event::StampedEvent;
 use fvm_shared::{ActorID, MethodNum};
 
-pub struct KytheraCallManager {
-    inner: DefaultCallManager<KytheraMachine<MemoryBlockstore, FakeExterns>>,
-    override_context: OverrideContext,
+#[repr(transparent)]
+pub struct KytheraCallManager<C: CallManager = DefaultCallManager<KytheraMachine>>(pub C);
+
+impl<M, C> KytheraCallManager<C>
+where
+    M: Machine,
+    C: CallManager<Machine = KytheraMachine<M>>,
+{
+    fn handle_cheatcode(
+        &mut self,
+        method: MethodNum,
+        params: Option<Block>,
+    ) -> fvm::kernel::Result<()> {
+        match method {
+            method_num if method_num == *crate::utils::WARP_NUM => {
+                let new_timestamp: u64 = from_slice(
+                    params
+                        .ok_or(ExecutionError::Fatal(anyhow!(
+                            "No parameters provided for Warp cheatcode"
+                        )))?
+                        .data(),
+                )
+                .map_err(|err| {
+                    ExecutionError::Fatal(anyhow!(format!(
+                        "Could not deserialize parameters for Warp cheatcode: {}",
+                        err
+                    )))
+                })?;
+                self.machine_mut().override_context.timestamp = Some(new_timestamp);
+            }
+            method_num if method_num == *crate::utils::EPOCH_NUM => {
+                let new_epoch: i64 = from_slice(
+                    params
+                        .ok_or(ExecutionError::Fatal(anyhow!(
+                            "No parameters provided for Epoch cheatcode"
+                        )))?
+                        .data(),
+                )
+                .map_err(|err| {
+                    ExecutionError::Fatal(anyhow!(format!(
+                        "Could not deserialize parameters for Epoch cheatcode: {}",
+                        err
+                    )))
+                })?;
+                self.machine_mut().override_context.epoch = Some(new_epoch);
+            }
+            method_num if method_num == *crate::utils::FEE_NUM => {
+                let (lo, hi): (u64, u64) = from_slice(
+                    params
+                        .ok_or(ExecutionError::Fatal(anyhow!(
+                            "No parameters provided for Fee cheatcode"
+                        )))?
+                        .data(),
+                )
+                .map_err(|err| {
+                    ExecutionError::Fatal(anyhow!(format!(
+                        "Could not deserialize parameters for Fee cheatcode: {}",
+                        err
+                    )))
+                })?;
+
+                self.machine_mut().override_context.base_fee =
+                    Some(fvm_shared::sys::TokenAmount { lo, hi });
+            }
+            method_num if method_num == *crate::utils::CHAIN_ID_NUM => {
+                let chain_id: u64 = from_slice(
+                    params
+                        .ok_or(ExecutionError::Fatal(anyhow!(
+                            "No parameters provided for ChainId cheatcode"
+                        )))?
+                        .data(),
+                )
+                .map_err(|err| {
+                    ExecutionError::Fatal(anyhow!(format!(
+                        "Could not deserialize parameters for ChainId cheatcode: {}",
+                        err
+                    )))
+                })?;
+
+                self.machine_mut().override_context.chain_id = Some(chain_id);
+            }
+            method_num if method_num == *crate::utils::PRANK_NUM => {
+                let new_caller: Address = from_slice(
+                    params
+                        .ok_or(ExecutionError::Fatal(anyhow!(
+                            "No parameters provided for Prank cheatcode"
+                        )))?
+                        .data(),
+                )
+                .map_err(|err| {
+                    ExecutionError::Fatal(anyhow!(format!(
+                        "Could not deserialize parameters for Prank cheatcode: {}",
+                        err
+                    )))
+                })?;
+
+                let new_caller_id = match new_caller.id() {
+                    Ok(id) => id,
+                    Err(err) => {
+                        return Err(ExecutionError::Fatal(anyhow!(format!(
+                            "Address parameter for Prank should have a valid ActorID: {}",
+                            err
+                        ))))
+                    }
+                };
+
+                self.machine_mut().override_context.caller = Some(new_caller_id);
+            }
+            method_num if method_num == *crate::utils::TRICK_NUM => {
+                let new_origin: Address = from_slice(
+                    params
+                        .ok_or(ExecutionError::Fatal(anyhow!(
+                            "No parameters provided for Trick cheatcode"
+                        )))?
+                        .data(),
+                )
+                .map_err(|err| {
+                    ExecutionError::Fatal(anyhow!(format!(
+                        "Could not deserialize parameters for Trick cheatcode: {}",
+                        err
+                    )))
+                })?;
+
+                let new_origin_id = match new_origin.id() {
+                    Ok(id) => id,
+                    Err(err) => {
+                        return Err(ExecutionError::Fatal(anyhow!(format!(
+                            "Address parameter for Trick should have a valid ActorID: {}",
+                            err
+                        ))))
+                    }
+                };
+
+                self.machine_mut().override_context.origin = Some(new_origin_id);
+            }
+            _ => return Err(ExecutionError::Fatal(anyhow!("Call to unknown cheatcode"))),
+        }
+
+        Ok(())
+    }
 }
 
-impl CallManager for KytheraCallManager {
-    type Machine = KytheraMachine<MemoryBlockstore, FakeExterns>;
+impl<M, C> CallManager for KytheraCallManager<C>
+where
+    M: Machine,
+    C: CallManager<Machine = KytheraMachine<M>>,
+{
+    type Machine = C::Machine;
 
     fn new(
         machine: Self::Machine,
@@ -36,20 +175,17 @@ impl CallManager for KytheraCallManager {
         nonce: u64,
         gas_premium: TokenAmount,
     ) -> Self {
-        Self {
-            inner: DefaultCallManager::new(
-                machine,
-                engine,
-                gas_limit,
-                origin,
-                origin_address,
-                receiver,
-                receiver_address,
-                nonce,
-                gas_premium,
-            ),
-            override_context: OverrideContext::default(),
-        }
+        Self(C::new(
+            machine,
+            engine,
+            gas_limit,
+            origin,
+            origin_address,
+            receiver,
+            receiver_address,
+            nonce,
+            gas_premium,
+        ))
     }
 
     fn send<K: Kernel<CallManager = Self>>(
@@ -62,58 +198,68 @@ impl CallManager for KytheraCallManager {
         gas_limit: Option<Gas>,
         read_only: bool,
     ) -> fvm::kernel::Result<InvocationResult> {
-        if &to == &Address::new_id(98) {
-            if method == *crate::utils::WARP_NUM {
-                if !params.is_none() {
-                    let new_timestamp: u64 = from_slice(params.clone().unwrap().data()).unwrap();
-                    dbg!(new_timestamp);
-                }
-            }
+        // If cheatcode actor then we proceed as usual
+        if to == Address::new_id(98) {
+            self.handle_cheatcode(method, params.clone())?;
+
+            self.0
+                .send::<KytheraKernel<K>>(from, to, method, params, value, gas_limit, read_only)
         }
-        // TODO Having call manager require the Kernel to refer to the same structure prevent us from doing this
-        self.inner.send::<DefaultKernel<DefaultCallManager<KytheraMachine<MemoryBlockstore, FakeExterns>>>>(
-            from, to, method, params, value, gas_limit, read_only,
-        )
+        // If any other actor, check if override caller
+        else {
+            let caller = self.machine().override_context().caller.unwrap_or(from);
+            self.machine_mut().override_context.caller = None;
+            self.0
+                .send::<KytheraKernel<K>>(caller, to, method, params, value, gas_limit, read_only)
+        }
     }
 
     fn with_transaction(
         &mut self,
-        _f: impl FnOnce(&mut Self) -> fvm::kernel::Result<InvocationResult>,
+        f: impl FnOnce(&mut Self) -> fvm::kernel::Result<InvocationResult>,
     ) -> fvm::kernel::Result<InvocationResult> {
-        // TODO having the callback function refering to this structure prevent us from passing it to the inner call manager
-        Err(ExecutionError::Fatal(anyhow!("aa")))
+        // This transmute is _safe_ because this type is "repr transparent".
+        let inner_ptr = &mut self.0 as *mut C;
+        self.0.with_transaction(|inner: &mut C| unsafe {
+            // Make sure that we've got the right pointer. Otherwise, this cast definitely isn't
+            // safe.
+            assert_eq!(inner_ptr, inner as *mut C);
+
+            // Ok, we got the pointer we expected, casting back to the interceptor is safe.
+            f(&mut *(inner as *mut C as *mut Self))
+        })
     }
 
     fn finish(self) -> (fvm::kernel::Result<FinishRet>, Self::Machine) {
-        self.inner.finish()
+        self.0.finish()
     }
 
     fn machine(&self) -> &Self::Machine {
-        self.inner.machine()
+        self.0.machine()
     }
 
     fn machine_mut(&mut self) -> &mut Self::Machine {
-        self.inner.machine_mut()
+        self.0.machine_mut()
     }
 
     fn engine(&self) -> &Engine {
-        self.inner.engine()
+        self.0.engine()
     }
 
     fn gas_tracker(&self) -> &GasTracker {
-        self.inner.gas_tracker()
+        self.0.gas_tracker()
     }
 
     fn gas_premium(&self) -> &TokenAmount {
-        self.inner.gas_premium()
+        self.0.gas_premium()
     }
 
     fn origin(&self) -> ActorID {
-        self.inner.origin()
+        self.0.origin()
     }
 
     fn next_actor_address(&self) -> Address {
-        self.inner.next_actor_address()
+        self.0.next_actor_address()
     }
 
     fn create_actor(
@@ -122,24 +268,23 @@ impl CallManager for KytheraCallManager {
         actor_id: ActorID,
         delegated_address: Option<Address>,
     ) -> fvm::kernel::Result<()> {
-        self.inner
-            .create_actor(code_id, actor_id, delegated_address)
+        self.0.create_actor(code_id, actor_id, delegated_address)
     }
 
     fn resolve_address(&self, address: &Address) -> fvm::kernel::Result<Option<ActorID>> {
-        self.inner.resolve_address(address)
+        self.0.resolve_address(address)
     }
 
     fn set_actor(&mut self, id: ActorID, state: ActorState) -> fvm::kernel::Result<()> {
-        self.inner.set_actor(id, state)
+        self.0.set_actor(id, state)
     }
 
     fn get_actor(&self, id: ActorID) -> fvm::kernel::Result<Option<ActorState>> {
-        self.inner.get_actor(id)
+        self.0.get_actor(id)
     }
 
     fn delete_actor(&mut self, id: ActorID) -> fvm::kernel::Result<()> {
-        self.inner.delete_actor(id)
+        self.0.delete_actor(id)
     }
 
     fn transfer(
@@ -148,22 +293,22 @@ impl CallManager for KytheraCallManager {
         to: ActorID,
         value: &TokenAmount,
     ) -> fvm::kernel::Result<()> {
-        self.inner.transfer(from, to, value)
+        self.0.transfer(from, to, value)
     }
 
     fn nonce(&self) -> u64 {
-        self.inner.nonce()
+        self.0.nonce()
     }
 
     fn invocation_count(&self) -> u64 {
-        self.inner.invocation_count()
+        self.0.invocation_count()
     }
 
     fn limiter_mut(&mut self) -> &mut <Self::Machine as Machine>::Limiter {
-        self.inner.limiter_mut()
+        self.0.limiter_mut()
     }
 
     fn append_event(&mut self, evt: StampedEvent) {
-        self.inner.append_event(evt)
+        self.0.append_event(evt)
     }
 }

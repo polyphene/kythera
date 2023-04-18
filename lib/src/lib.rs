@@ -6,6 +6,7 @@ pub use kythera_common::{
     from_slice, to_vec,
 };
 
+use fvm_ipld_encoding::RawBytes;
 use kythera_fvm::{
     executor::{ApplyRet, KytheraExecutor},
     Account,
@@ -160,7 +161,9 @@ impl Tester {
             .ok_or(Error::MissingActor)?;
 
         let target_id = match target.address.id() {
-            Ok(id) => id.to_ne_bytes().to_vec(),
+            Ok(id) => {
+                RawBytes::new(to_vec(&id).expect("Should be able to serialize target actor ID"))
+            }
             Err(_) => panic!("Actor Id should be valid"),
         };
 
@@ -185,7 +188,6 @@ impl Tester {
                 };
 
                 log::info!("Testing Actor {}", target.name);
-
                 let root = self.state_tree.flush();
                 let blockstore = self.state_tree.store().clone();
                 let mut executor = KytheraExecutor::new(
@@ -194,7 +196,7 @@ impl Tester {
                     self.builtin_actors.root,
                     self.account.1,
                     test_address,
-                    target_id.clone().into(),
+                    target_id.clone(),
                 );
 
                 // Run the constructor if it exists.
@@ -269,7 +271,7 @@ impl Tester {
                                     self.builtin_actors.root,
                                     self.account.1,
                                     test_address,
-                                    target_id.clone().into(),
+                                    target_id.clone(),
                                 );
 
                                 log::info!(

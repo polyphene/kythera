@@ -11,6 +11,7 @@ const ACTORS: &[&str] = &["cheatcodes-actor"];
 #[cfg(feature = "testing")]
 const TEST_ACTORS: &[&str] = &[
     "basic-test-actor",
+    "basic-target-actor",
     "builtins-test-actor",
     "cheatcodes-test-actor",
     "constructor-setup-test-actor",

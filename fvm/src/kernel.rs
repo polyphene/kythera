@@ -1,5 +1,5 @@
 use crate::call_manager::KytheraCallManager;
-use crate::externs::FakeExterns;
+use crate::context::Override;
 use crate::machine::KytheraMachine;
 use cid::Cid;
 use fvm::call_manager::CallManager;
@@ -11,7 +11,6 @@ use fvm::kernel::{
 };
 use fvm::machine::Machine;
 use fvm::{DefaultKernel, Kernel};
-use fvm_ipld_blockstore::MemoryBlockstore;
 use fvm_shared::address::Address;
 use fvm_shared::clock::ChainEpoch;
 use fvm_shared::consensus::ConsensusFault;
@@ -30,18 +29,24 @@ use fvm_shared::sys::out::vm::MessageContext;
 use fvm_shared::sys::SendFlags;
 use fvm_shared::{ActorID, MethodNum};
 
-pub struct KytheraKernel {
-    inner: DefaultKernel<KytheraCallManager>,
+pub struct KytheraKernel<K = DefaultKernel<KytheraCallManager>> {
+    inner: K,
 }
 
-impl Kernel for KytheraKernel {
-    type CallManager = KytheraCallManager;
+impl<M, C, K> Kernel for KytheraKernel<K>
+where
+    M: Machine,
+    C: CallManager<Machine = KytheraMachine<M>>,
+    K: Kernel<CallManager = KytheraCallManager<C>>,
+{
+    type CallManager = C;
 
     fn into_inner(self) -> (Self::CallManager, BlockRegistry)
     where
         Self: Sized,
     {
-        self.inner.into_inner()
+        let (kythera_cm, br) = self.inner.into_inner();
+        (kythera_cm.0, br)
     }
 
     fn new(
@@ -57,8 +62,8 @@ impl Kernel for KytheraKernel {
         Self: Sized,
     {
         Self {
-            inner: DefaultKernel::new(
-                mgr,
+            inner: K::new(
+                KytheraCallManager(mgr),
                 blocks,
                 caller,
                 actor_id,
@@ -74,7 +79,12 @@ impl Kernel for KytheraKernel {
     }
 }
 
-impl ActorOps for KytheraKernel {
+impl<M, C, K> ActorOps for KytheraKernel<K>
+where
+    M: Machine,
+    C: CallManager<Machine = KytheraMachine<M>>,
+    K: Kernel<CallManager = KytheraCallManager<C>>,
+{
     fn resolve_address(&self, address: &Address) -> fvm::kernel::Result<ActorID> {
         self.inner.resolve_address(address)
     }
@@ -114,7 +124,12 @@ impl ActorOps for KytheraKernel {
     }
 }
 
-impl IpldBlockOps for KytheraKernel {
+impl<M, C, K> IpldBlockOps for KytheraKernel<K>
+where
+    M: Machine,
+    C: CallManager<Machine = KytheraMachine<M>>,
+    K: Kernel<CallManager = KytheraCallManager<C>>,
+{
     fn block_open(&mut self, cid: &Cid) -> fvm::kernel::Result<(BlockId, BlockStat)> {
         self.inner.block_open(cid)
     }
@@ -141,13 +156,23 @@ impl IpldBlockOps for KytheraKernel {
     }
 }
 
-impl CircSupplyOps for KytheraKernel {
+impl<M, C, K> CircSupplyOps for KytheraKernel<K>
+where
+    M: Machine,
+    C: CallManager<Machine = KytheraMachine<M>>,
+    K: Kernel<CallManager = KytheraCallManager<C>>,
+{
     fn total_fil_circ_supply(&self) -> fvm::kernel::Result<TokenAmount> {
         self.inner.total_fil_circ_supply()
     }
 }
 
-impl CryptoOps for KytheraKernel {
+impl<M, C, K> CryptoOps for KytheraKernel<K>
+where
+    M: Machine,
+    C: CallManager<Machine = KytheraMachine<M>>,
+    K: Kernel<CallManager = KytheraCallManager<C>>,
+{
     fn verify_signature(
         &self,
         sig_type: SignatureType,
@@ -212,7 +237,12 @@ impl CryptoOps for KytheraKernel {
     }
 }
 
-impl DebugOps for KytheraKernel {
+impl<M, C, K> DebugOps for KytheraKernel<K>
+where
+    M: Machine,
+    C: CallManager<Machine = KytheraMachine<M>>,
+    K: Kernel<CallManager = KytheraCallManager<C>>,
+{
     fn log(&self, msg: String) {
         self.inner.log(msg)
     }
@@ -226,13 +256,23 @@ impl DebugOps for KytheraKernel {
     }
 }
 
-impl EventOps for KytheraKernel {
+impl<M, C, K> EventOps for KytheraKernel<K>
+where
+    M: Machine,
+    C: CallManager<Machine = KytheraMachine<M>>,
+    K: Kernel<CallManager = KytheraCallManager<C>>,
+{
     fn emit_event(&mut self, raw_evt: &[u8]) -> fvm::kernel::Result<()> {
         self.inner.emit_event(raw_evt)
     }
 }
 
-impl GasOps for KytheraKernel {
+impl<M, C, K> GasOps for KytheraKernel<K>
+where
+    M: Machine,
+    C: CallManager<Machine = KytheraMachine<M>>,
+    K: Kernel<CallManager = KytheraCallManager<C>>,
+{
     fn gas_used(&self) -> Gas {
         self.inner.gas_used()
     }
@@ -250,15 +290,29 @@ impl GasOps for KytheraKernel {
     }
 }
 
-impl MessageOps for KytheraKernel {
+impl<M, C, K> MessageOps for KytheraKernel<K>
+where
+    M: Machine,
+    C: CallManager<Machine = KytheraMachine<M>>,
+    K: Kernel<CallManager = KytheraCallManager<C>>,
+{
     fn msg_context(&self) -> fvm::kernel::Result<MessageContext> {
-        self.inner.msg_context()
+        self.inner
+            .msg_context()
+            .map(|mc| mc.override_with_context(self.machine().override_context()))
     }
 }
 
-impl NetworkOps for KytheraKernel {
+impl<M, C, K> NetworkOps for KytheraKernel<K>
+where
+    M: Machine,
+    C: CallManager<Machine = KytheraMachine<M>>,
+    K: Kernel<CallManager = KytheraCallManager<C>>,
+{
     fn network_context(&self) -> fvm::kernel::Result<NetworkContext> {
-        self.inner.network_context()
+        self.inner
+            .network_context()
+            .map(|nc| nc.override_with_context(self.machine().override_context()))
     }
 
     fn tipset_cid(&self, epoch: ChainEpoch) -> fvm::kernel::Result<Cid> {
@@ -266,7 +320,12 @@ impl NetworkOps for KytheraKernel {
     }
 }
 
-impl RandomnessOps for KytheraKernel {
+impl<M, C, K> RandomnessOps for KytheraKernel<K>
+where
+    M: Machine,
+    C: CallManager<Machine = KytheraMachine<M>>,
+    K: Kernel<CallManager = KytheraCallManager<C>>,
+{
     fn get_randomness_from_tickets(
         &self,
         personalization: i64,
@@ -288,7 +347,12 @@ impl RandomnessOps for KytheraKernel {
     }
 }
 
-impl SelfOps for KytheraKernel {
+impl<M, C, K> SelfOps for KytheraKernel<K>
+where
+    M: Machine,
+    C: CallManager<Machine = KytheraMachine<M>>,
+    K: Kernel<CallManager = KytheraCallManager<C>>,
+{
     fn root(&self) -> fvm::kernel::Result<Cid> {
         self.inner.root()
     }
@@ -306,7 +370,12 @@ impl SelfOps for KytheraKernel {
     }
 }
 
-impl SendOps for KytheraKernel {
+impl<M, C, K> SendOps for KytheraKernel<K>
+where
+    M: Machine,
+    C: CallManager<Machine = KytheraMachine<M>>,
+    K: Kernel<CallManager = KytheraCallManager<C>>,
+{
     fn send(
         &mut self,
         recipient: &Address,
@@ -321,8 +390,11 @@ impl SendOps for KytheraKernel {
     }
 }
 
-impl LimiterOps for KytheraKernel {
-    type Limiter = <KytheraMachine<MemoryBlockstore, FakeExterns> as Machine>::Limiter;
+impl<K> LimiterOps for KytheraKernel<K>
+where
+    K: LimiterOps,
+{
+    type Limiter = K::Limiter;
 
     fn limiter_mut(&mut self) -> &mut Self::Limiter {
         self.inner.limiter_mut()
