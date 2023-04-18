@@ -1,18 +1,22 @@
 // Copyright 2023 Polyphene.
 // SPDX-License-Identifier: Apache-2.0, MIT
 
+#[cfg(feature = "colors")]
+use colored::Colorize;
+
 pub use kythera_common::{
     abi::{pascal_case_split, Abi, Method, MethodType},
     from_slice, to_vec,
 };
-
-use fvm_ipld_encoding::RawBytes;
 use kythera_fvm::{
     executor::{ApplyRet, KytheraExecutor},
     Account,
 };
+
+use core::fmt;
 use std::sync::mpsc::Sender;
 
+use fvm_ipld_encoding::RawBytes;
 use fvm_shared::{address::Address, bigint::Zero, econ::TokenAmount, error::ExitCode};
 
 use error::Error;
@@ -69,6 +73,12 @@ impl WasmActor {
     }
 }
 
+impl fmt::Display for WasmActor {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "{}", self.name)
+    }
+}
+
 /// An Actor that has been deployed into a `BlockStore`.
 #[derive(Debug, Clone)]
 struct DeployedActor {
@@ -86,15 +96,39 @@ pub enum TestResultType {
 
 /// Output of running a [`Method`] of an Actor test.
 #[derive(Clone, Debug)]
-pub struct TestResult<'a> {
-    method: &'a Method,
+pub struct TestResult {
+    method: Method,
     ret: TestResultType,
 }
 
-impl<'a> TestResult<'a> {
+impl TestResult {
+    /// Check if the [`TestResult`] passed.
+    pub fn passed(&self) -> bool {
+        matches!(self.ret, TestResultType::Passed(_))
+    }
+}
+
+impl fmt::Display for TestResult {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "test {} ... ", self.method(),)?;
+        if self.passed() {
+            let ok = "ok";
+            #[cfg(feature = "colors")]
+            let ok = ok.green();
+            write!(f, "{ok}")
+        } else {
+            let failed = "FAILED";
+            #[cfg(feature = "colors")]
+            let failed = failed.bright_red();
+            write!(f, "{failed}")
+        }
+    }
+}
+
+impl TestResult {
     /// Get the [`Method`] tested.
     pub fn method(&self) -> &Method {
-        self.method
+        &self.method
     }
 
     /// Get the [`ApplyRet`] of the test.
@@ -107,7 +141,7 @@ impl<'a> TestResult<'a> {
 #[derive(Debug)]
 pub struct TestActorResults<'a> {
     pub test_actor: &'a WasmActor,
-    pub results: Result<Vec<TestResult<'a>>, Error>,
+    pub results: Result<Vec<TestResult>, Error>,
 }
 
 impl Tester {
@@ -152,7 +186,7 @@ impl Tester {
     pub fn test<'a>(
         &mut self,
         test_actors: &'a [WasmActor],
-        stream_results: Option<Sender<(&'a WasmActor, TestResult<'a>)>>,
+        stream_results: Option<Sender<(WasmActor, TestResult)>>,
     ) -> Result<Vec<TestActorResults<'a>>, Error> {
         let target = self
             .target_actor
@@ -167,7 +201,9 @@ impl Tester {
             Err(_) => panic!("Actor Id should be valid"),
         };
 
-        // Iterate over all test test_actors
+        log::info!("Running Tests for Actor : {}", target.name);
+        log::info!("Testing {} test files", test_actors.len());
+        // Iterate over all test actors
         Ok(test_actors
             .iter()
             .map(|test_actor| {
@@ -187,7 +223,6 @@ impl Tester {
                     }
                 };
 
-                log::info!("Testing Actor {}", target.name);
                 let root = self.state_tree.flush();
                 let blockstore = self.state_tree.store().clone();
                 let mut executor = KytheraExecutor::new(
@@ -207,14 +242,14 @@ impl Tester {
                                 let source = apply_ret.failure_info.map(|f| f.to_string().into());
                                 return TestActorResults {
                                     test_actor,
-                                    results: Err(Error::ConstructorError { source }),
+                                    results: Err(Error::Constructor { source }),
                                 };
                             }
                         }
                         Err(err) => {
                             return TestActorResults {
                                 test_actor,
-                                results: Err(Error::ConstructorError {
+                                results: Err(Error::Constructor {
                                     source: Some(err.into()),
                                 }),
                             }
@@ -230,14 +265,14 @@ impl Tester {
                                 let source = apply_ret.failure_info.map(|f| f.to_string().into());
                                 return TestActorResults {
                                     test_actor,
-                                    results: Err(Error::SetupError { source }),
+                                    results: Err(Error::Setup { source }),
                                 };
                             }
                         }
                         Err(err) => {
                             return TestActorResults {
                                 test_actor,
-                                results: Err(Error::SetupError {
+                                results: Err(Error::Setup {
                                     source: Some(err.into()),
                                 }),
                             }
@@ -255,6 +290,11 @@ impl Tester {
                 // one possible concurrent engine.
                 // The following steps will not end up in a result. Either we could finalize message
                 // handling and we return the related ApplyRet or we return nothing.
+                log::info!(
+                    "testing {} {} methods",
+                    test_actor.name(),
+                    test_actor.abi().methods().len()
+                );
                 TestActorResults {
                     test_actor,
                     results: Ok(
@@ -274,7 +314,7 @@ impl Tester {
                                     target_id.clone(),
                                 );
 
-                                log::info!(
+                                log::debug!(
                                     "Testing test {}.{}() for Actor {}",
                                     test_actor.name,
                                     method.name(),
@@ -296,9 +336,14 @@ impl Tester {
                                     Err(err) => TestResultType::Erred(err.to_string()),
                                 };
 
-                                let result = TestResult { method, ret };
+                                let result = TestResult {
+                                    method: method.clone(),
+                                    ret,
+                                };
                                 if let Some(ref sender) = stream_results {
-                                    if let Err(err) = sender.send((test_actor, result.clone())) {
+                                    if let Err(err) =
+                                        sender.send((test_actor.clone(), result.clone()))
+                                    {
                                         log::error!("Could not Stream the Result: {err}");
                                     }
                                 }

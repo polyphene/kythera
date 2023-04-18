@@ -1,6 +1,8 @@
 // Copyright 2023 Polyphene.
 // SPDX-License-Identifier: Apache-2.0, MIT
 
+use std::fmt;
+
 use anyhow::Result;
 use frc42_dispatch::hash::MethodResolver;
 use serde::de::SeqAccess;
@@ -146,6 +148,12 @@ pub struct Method {
     number: MethodNum,
     name: String,
     r#type: MethodType,
+}
+
+impl fmt::Display for Method {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "{} - {}", self.number(), self.name())
+    }
 }
 
 /// Type of the [`Abi`] [`Method`] of the test Actor.

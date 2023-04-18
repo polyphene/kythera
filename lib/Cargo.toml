@@ -5,6 +5,11 @@ edition = "2021"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
+[features]
+default = []
+# Support colors when printing test results.
+colors = ["colored"]
+
 [dependencies]
 actors-v10 = { package = "fil_builtin_actors_bundle", git = "https://github.com/filecoin-project/builtin-actors", rev = "39571e2" }
 fil_actor_account_v10 = "1.0.0"
@@ -38,6 +43,7 @@ log = "0.4.17"
 rand = "0.8.5"
 rand_chacha = "0.3.1"
 thiserror = "1.0.39"
+colored = { version = "2.0.0", optional = true }
 
 [dev-dependencies.kythera-actors]
 path = "../actors"

@@ -4,6 +4,7 @@
 use frc42_dispatch::match_method;
 use fvm_ipld_encoding::DAG_CBOR;
 use fvm_sdk as sdk;
+use fvm_sdk::NO_DATA_BLOCK_ID;
 use fvm_shared::error::ExitCode;
 use sdk::sys::ErrorNumber;
 use serde::ser;
@@ -27,12 +28,25 @@ where
 
 #[no_mangle]
 fn invoke(_input: u32) -> u32 {
+    std::panic::set_hook(Box::new(|info| {
+        sdk::vm::exit(
+            ExitCode::USR_ASSERTION_FAILED.value(),
+            None,
+            Some(&format!("{info}")),
+        )
+    }));
+
     let method_num = sdk::message::method_number();
     match_method!(
         method_num,
         {
             "TestOne" => return_ipld(TestOne()).unwrap(),
             "TestTwo" => return_ipld(TestTwo()).unwrap(),
+            "TestFailed" => {
+                TestFailed();
+
+                NO_DATA_BLOCK_ID
+            },
             _ => {
                 sdk::vm::abort(
                     ExitCode::USR_UNHANDLED_MESSAGE.value(),
@@ -51,4 +65,9 @@ fn TestOne() -> &'static str {
 #[allow(non_snake_case)]
 fn TestTwo() -> &'static str {
     "TestTwo"
+}
+
+#[allow(non_snake_case)]
+fn TestFailed() {
+    assert_eq!(1 + 1, 3);
 }

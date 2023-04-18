@@ -6,8 +6,8 @@ members = [
     "fvm",
     "common",
     "actors",
-    "actors/test_actors/*",
     "actors/actors/*",
+    "actors/test_actors/*",
 ]
 
 
