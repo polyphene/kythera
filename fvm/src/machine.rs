@@ -7,6 +7,9 @@ use fvm_ipld_blockstore::MemoryBlockstore;
 
 pub struct KytheraMachine<M = DefaultMachine<MemoryBlockstore, FakeExterns>> {
     inner: M,
+    // We store OverrideContext here as the Kernel is instantiated at every new implicit message
+    // and the CallManager needs to have only one inner value for the unsafe code in `with_transaction()`
+    // to work.
     pub(crate) override_context: OverrideContext,
 }
 

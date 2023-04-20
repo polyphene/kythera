@@ -27,7 +27,7 @@ mod state_tree;
 
 /// Main interface to test `Actor`s with Kythera.
 pub struct Tester {
-    // Builtin test_actors root Cid used in the Machine
+    // Builtin actors root Cid used in the Machine
     builtin_actors: BuiltInActors,
     // State tree constructed before instantiating the Machine
     state_tree: StateTree,

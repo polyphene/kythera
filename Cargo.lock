@@ -3105,8 +3105,8 @@ dependencies = [
  "fvm_ipld_encoding 0.3.3",
  "fvm_shared 3.1.0",
  "kythera-common",
- "lazy_static",
  "multihash",
+ "once_cell",
 ]
 
 [[package]]
