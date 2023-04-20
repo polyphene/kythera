@@ -64,7 +64,7 @@ fn read_actor<P: AsRef<Path>>(binary_path: P) -> anyhow::Result<WasmActor> {
 
 /// Gather the target Actor file and its test files.
 /// The rules for reading Actor files and it's matching tests are:
-/// - All .wasm files that are at the root of the kythera input dir are test_actors.
+/// - All .wasm files that are at the root of the kythera input dir are target actors.
 /// - All .t.wasm files that are at the root of the kythera wasm dir are test test_actors.
 /// - All .wasm files that are in .t dirs are test test_actors.
 pub fn search_files<P: AsRef<Path>>(path: P) -> anyhow::Result<Vec<Test>> {
