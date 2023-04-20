@@ -328,7 +328,7 @@ impl StateTree {
         }
     }
 
-    /// Load Kythera utilities' actors
+    /// Load Kythera utilities' actors.
     pub fn load_kythera_actors(&mut self) {
         // Deploy cheatcodes actor.
         let cheatcodes_actor = WasmActor::new(
