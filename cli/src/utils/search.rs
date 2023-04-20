@@ -222,7 +222,7 @@ mod tests {
             methods: vec![Method::new_from_name("TestTransfer").unwrap()],
         };
 
-        // Create target & test test_actors files.
+        // Create target & test_actors files.
         create_actors_in_dir(
             dir_path,
             vec![("token", &target_actor_abi), ("token.t", &test_actor_abi)],
