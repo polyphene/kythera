@@ -65,10 +65,10 @@ fn read_actor<P: AsRef<Path>>(binary_path: P) -> anyhow::Result<WasmActor> {
 /// Gather the target Actor file and its test files.
 /// The rules for reading Actor files and it's matching tests are:
 /// - All .wasm files that are at the root of the kythera input dir are target actors.
-/// - All .t.wasm files that are at the root of the kythera wasm dir are test_actors.
-/// - All .wasm files that are in .t dirs are test_actors.
+/// - All .t.wasm files that are at the root of the kythera wasm dir are test actors.
+/// - All .wasm files that are in .t dirs are test actors.
 pub fn search_files<P: AsRef<Path>>(path: P) -> anyhow::Result<Vec<Test>> {
-    // Search the root dir and find all the .wasm files there which may be target test_actors
+    // Search the root dir and find all the .wasm files there which may be target actors
     // or its matching test dirs and files.
     // Split into two lists, the first being the target Actors and the second
     // their matching test files and dirs.
@@ -222,7 +222,7 @@ mod tests {
             methods: vec![Method::new_from_name("TestTransfer").unwrap()],
         };
 
-        // Create target & test_actors files.
+        // Create target & test actors files.
         create_actors_in_dir(
             dir_path,
             vec![("token", &target_actor_abi), ("token.t", &test_actor_abi)],
