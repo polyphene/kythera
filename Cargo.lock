@@ -3106,7 +3106,6 @@ dependencies = [
  "fvm_shared 3.1.0",
  "kythera-common",
  "multihash",
- "once_cell",
 ]
 
 [[package]]

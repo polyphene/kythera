@@ -1,5 +1,6 @@
 use crate::kernel::KytheraKernel;
 use crate::machine::KytheraMachine;
+use crate::utils::{CHAIN_ID_NUM, EPOCH_NUM, FEE_NUM, PRANK_NUM, TRICK_NUM, WARP_NUM};
 use anyhow::anyhow;
 use cid::Cid;
 use fvm::call_manager::{CallManager, DefaultCallManager, FinishRet, InvocationResult};
@@ -28,8 +29,8 @@ where
         method: MethodNum,
         params: Option<Block>,
     ) -> fvm::kernel::Result<()> {
-        match method {
-            method_num if method_num == *crate::utils::WARP_NUM => {
+        match method as u64 {
+            WARP_NUM => {
                 let new_timestamp: u64 = from_slice(
                     params
                         .ok_or(ExecutionError::Fatal(anyhow!(
@@ -45,7 +46,7 @@ where
                 })?;
                 self.machine_mut().override_context.timestamp = Some(new_timestamp);
             }
-            method_num if method_num == *crate::utils::EPOCH_NUM => {
+            EPOCH_NUM => {
                 let new_epoch: i64 = from_slice(
                     params
                         .ok_or(ExecutionError::Fatal(anyhow!(
@@ -61,7 +62,7 @@ where
                 })?;
                 self.machine_mut().override_context.epoch = Some(new_epoch);
             }
-            method_num if method_num == *crate::utils::FEE_NUM => {
+            FEE_NUM => {
                 let (lo, hi): (u64, u64) = from_slice(
                     params
                         .ok_or(ExecutionError::Fatal(anyhow!(
@@ -79,7 +80,7 @@ where
                 self.machine_mut().override_context.base_fee =
                     Some(fvm_shared::sys::TokenAmount { lo, hi });
             }
-            method_num if method_num == *crate::utils::CHAIN_ID_NUM => {
+            CHAIN_ID_NUM => {
                 let chain_id: u64 = from_slice(
                     params
                         .ok_or(ExecutionError::Fatal(anyhow!(
@@ -96,7 +97,7 @@ where
 
                 self.machine_mut().override_context.chain_id = Some(chain_id);
             }
-            method_num if method_num == *crate::utils::PRANK_NUM => {
+            PRANK_NUM => {
                 let new_caller: Address = from_slice(
                     params
                         .ok_or(ExecutionError::Fatal(anyhow!(
@@ -123,7 +124,7 @@ where
 
                 self.machine_mut().override_context.caller = Some(new_caller_id);
             }
-            method_num if method_num == *crate::utils::TRICK_NUM => {
+            TRICK_NUM => {
                 let new_origin: Address = from_slice(
                     params
                         .ok_or(ExecutionError::Fatal(anyhow!(
