@@ -4,8 +4,6 @@
 #[cfg(feature = "colors")]
 use colored::Colorize;
 
-// Re-exports.
-// TODO: are these types really necessary to be exposed? Should we wrap them in our own?
 pub use kythera_common::{
     abi::{pascal_case_split, Abi, Method, MethodType},
     from_slice, to_vec,
