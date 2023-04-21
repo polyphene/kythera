@@ -8,8 +8,10 @@ pub use kythera_common::{
     abi::{pascal_case_split, Abi, Method, MethodType},
     from_slice, to_vec,
 };
-use kythera_fvm::{
+
+pub use kythera_fvm::{
     executor::{ApplyRet, KytheraExecutor},
+    trace::ExecutionEvent,
     Account,
 };
 

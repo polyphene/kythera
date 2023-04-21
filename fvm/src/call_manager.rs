@@ -29,7 +29,7 @@ where
         method: MethodNum,
         params: Option<Block>,
     ) -> fvm::kernel::Result<()> {
-        match method as u64 {
+        match method {
             WARP_NUM => {
                 let new_timestamp: u64 = from_slice(
                     params

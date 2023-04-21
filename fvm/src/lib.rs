@@ -15,6 +15,9 @@ pub mod state_tree {
     pub use fvm::state_tree::StateTree;
 }
 
+pub mod trace {
+    pub use fvm::trace::{ExecutionEvent, ExecutionTrace};
+}
 pub type Account = (ActorID, Address);
 
 mod call_manager;
