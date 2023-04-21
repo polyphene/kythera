@@ -417,7 +417,7 @@ impl StateTree {
     }
 
     /// Deploy a new Actor at a given address, provided with a given token balance
-    /// and returns the CodeCID of the installed actor
+    /// and returns the CodeCID of the installed actor.
     pub fn deploy_actor_from_bin(
         &mut self,
         actor: &WasmActor,
