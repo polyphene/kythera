@@ -377,7 +377,7 @@ mod tests {
         // Instantiate tester
         let tester = Tester::new();
 
-        // Testing that we got proper CIDs for our revision for builtin test_actors and that they are
+        // Testing that we got proper CIDs for our revision for builtin actors and that they are
         // set in the state tree
         assert_eq!(tester.builtin_actors.root, builtins_actors.root);
         assert!(tester
