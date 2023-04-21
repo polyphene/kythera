@@ -1,13 +1,13 @@
 ---
-title: "Command-line interface"
+title: "First Steps with Kythera"
 date: 2023-04-03T11:01:56+02:00
 lastmod: 2023-04-03T11:01:56+02:00
 draft: false
 images: []
 menu:
     docs:
-        parent: "reference"
-weight: 220
+        parent: "getting-started"
+weight: 130
 toc: true
 ---
 

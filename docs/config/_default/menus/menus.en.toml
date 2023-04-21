@@ -1,12 +1,23 @@
 [[docs]]
-  name = "Reference"
+  name = "Getting Started"
   weight = 10
+  identifier = "getting-started"
+  url = "/docs/getting-started/"
+
+[[docs]]
+  name = "Reference"
+  weight = 20
   identifier = "reference"
   url = "/docs/reference/"
 
 [[main]]
-  name = "Docs"
-  url = "/docs/reference/introduction/"
+  name = "Documentation"
+  url = "/docs/getting-started/introduction/"
+  weight = 10
+
+[[main]]
+  name = "Tutorial"
+  url = "/tutorial/overview/"
   weight = 10
 
 [[social]]
