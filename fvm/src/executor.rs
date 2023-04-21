@@ -9,8 +9,9 @@ use fvm::engine::EnginePool;
 use fvm::executor::DefaultExecutor;
 use fvm::DefaultKernel;
 
-pub use fvm::executor::Executor as _;
 pub use fvm::executor::{ApplyFailure, ApplyKind, ApplyRet};
+
+use fvm::executor::Executor as _;
 use fvm::machine::{Machine, NetworkConfig};
 use fvm_ipld_blockstore::MemoryBlockstore;
 use fvm_ipld_encoding::RawBytes;

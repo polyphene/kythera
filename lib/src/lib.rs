@@ -8,12 +8,11 @@ pub use kythera_common::{
     abi::{pascal_case_split, Abi, Method, MethodType},
     from_slice, to_vec,
 };
+pub use kythera_fvm::executor::ApplyRet;
+pub use kythera_fvm::trace::ExecutionEvent;
 
 use core::fmt;
-use kythera_fvm::{
-    executor::{ApplyRet, KytheraExecutor},
-    Account,
-};
+use kythera_fvm::{executor::KytheraExecutor, Account};
 use std::sync::mpsc::Sender;
 
 use fvm_shared::{address::Address, bigint::Zero, econ::TokenAmount, error::ExitCode};

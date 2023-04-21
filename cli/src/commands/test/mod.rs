@@ -1,7 +1,7 @@
 use crate::utils::search::search_files;
-use clap::Args;
+use clap::{ArgAction, Args};
 use colored::Colorize;
-use kythera_lib::{TestResult, TestResultType, Tester, WasmActor};
+use kythera_lib::{ApplyRet, ExecutionEvent, TestResult, TestResultType, Tester, WasmActor};
 use std::{
     path::PathBuf,
     sync::mpsc::{channel, sync_channel, Receiver, SyncSender},
@@ -13,6 +13,17 @@ use std::{
 pub(crate) struct TestArgs {
     /// Actor files dir.
     path: PathBuf,
+
+    /// Verbosity of the traces.
+    ///
+    /// Pass multiple times to increase the verbosity (e.g. -v, -vv, -vvv).
+    ///
+    /// Verbosity levels:
+    /// - 1: Print logs for all tests
+    /// - 2: Print execution traces for failing tests
+    /// - 3: Print execution traces for all tests, and setup traces for failing tests
+    #[clap(long, short, verbatim_doc_comment, action = ArgAction::Count)]
+    pub verbosity: u8,
 }
 
 /// Kythera cli test command.
@@ -25,7 +36,8 @@ pub(crate) fn test(args: &TestArgs) -> anyhow::Result<()> {
         let (stream_tx, stream_rx) = channel();
         let mut tester = Tester::new();
         tester.deploy_target_actor(test.actor)?;
-        thread::spawn(move || stream_results(stream_rx, sync_tx));
+        let verbosity = args.verbosity;
+        thread::spawn(move || stream_results(stream_rx, sync_tx, verbosity));
         let _results = tester.test(&test.tests, Some(stream_tx))?;
         sync_rx
             .recv()
@@ -36,20 +48,38 @@ pub(crate) fn test(args: &TestArgs) -> anyhow::Result<()> {
 
 /// Stream the results received from `Tester::test,
 /// so that users see the result of each test as soon as it finishes.
-fn stream_results(stream: Receiver<(WasmActor, TestResult)>, sync_tx: SyncSender<()>) {
+fn stream_results(
+    stream: Receiver<(WasmActor, TestResult)>,
+    sync_tx: SyncSender<()>,
+    verbosity: u8,
+) {
     let mut tests_failed = vec![];
     let mut tests_passed = vec![];
     let mut result = "ok".green();
     for (_actor, test_result) in stream {
         log::info!("{test_result}");
-        if !test_result.passed() {
-            result = "FAILED".bright_red();
-            tests_failed.push(test_result);
-        } else {
-            tests_passed.push(test_result);
+        match test_result.ret() {
+            TestResultType::Passed(apply_ret) | TestResultType::Failed(apply_ret) => {
+                log::info!("(gas consumption: {})", apply_ret.msg_receipt.gas_used);
+                if verbosity >= 2 {
+                    print_verbose_traces(apply_ret);
+                }
+                if test_result.passed() {
+                    tests_passed.push(test_result);
+                } else {
+                    tests_failed.push(test_result);
+                }
+            }
+            TestResultType::Erred(_) => {
+                tests_failed.push(test_result);
+            }
         }
     }
+
+    // After each and every test result has been printed,
+    // we print the sum of failed and passed tests.
     if !tests_failed.is_empty() {
+        result = "FAILED".bright_red();
         log::info!("\nfailures:");
         for f in tests_failed.iter() {
             log::info!("test {}", f.method());
@@ -76,6 +106,33 @@ fn stream_results(stream: Receiver<(WasmActor, TestResult)>, sync_tx: SyncSender
     sync_tx
         .send(())
         .expect("Should be able to sync finish streaming results");
+}
+
+/// Print the traces and gas consumptions of each test.
+fn print_verbose_traces(apply_ret: &ApplyRet) {
+    for trace in apply_ret.exec_trace.iter() {
+        match trace {
+            // OnChainReturnValue doesn't have costs.
+            ExecutionEvent::GasCharge(gas_charge) if gas_charge.name == "OnChainReturnValue" => {}
+            ExecutionEvent::GasCharge(gas_charge) => {
+                log::info!("├─ [<Gas Charge>] {}", gas_charge.name);
+                log::info!("│   └─ ← {}", gas_charge.compute_gas);
+            }
+            kythera_lib::ExecutionEvent::Call {
+                from, to, method, ..
+            } => {
+                log::info!("├─ [<Call>] from {from} to {to} method: {method}");
+            }
+            ExecutionEvent::CallReturn(exit_code, _) => {
+                log::info!("└─ ← {exit_code}");
+            }
+            ExecutionEvent::CallError(syscal_error) => {
+                log::info!("├─ [<Syscall Error>] {syscal_error}");
+            }
+            // non_exhaustive enum.
+            _ => {}
+        }
+    }
 }
 
 #[cfg(test)]
