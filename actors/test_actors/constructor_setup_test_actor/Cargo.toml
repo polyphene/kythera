@@ -1,5 +1,5 @@
 [package]
-name = "constructor_setup_test_actor"
+name = "constructor-setup-test-actor"
 version = "0.1.0"
 edition = "2021"
 publish=false

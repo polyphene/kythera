@@ -4,18 +4,18 @@
 use crate::externs::FakeExterns;
 use crate::machine::KytheraMachine;
 use cid::Cid;
-use fvm::call_manager::DefaultCallManager;
 use fvm::engine::EnginePool;
 use fvm::executor::DefaultExecutor;
-use fvm::DefaultKernel;
 
+use crate::kernel::KytheraKernel;
+use crate::utils::KYTHERA_NETWORK_ID;
+pub use fvm::executor::Executor as _;
 pub use fvm::executor::{ApplyFailure, ApplyKind, ApplyRet};
-
-use fvm::executor::Executor as _;
-use fvm::machine::{Machine, NetworkConfig};
-use fvm_ipld_blockstore::MemoryBlockstore;
+use fvm::machine::{DefaultMachine, Machine, NetworkConfig};
+use fvm_ipld_blockstore::{Buffered, MemoryBlockstore};
 use fvm_ipld_encoding::RawBytes;
 use fvm_shared::address::Address;
+use fvm_shared::chainid::ChainID;
 use fvm_shared::econ::TokenAmount;
 use fvm_shared::message::Message;
 use fvm_shared::version::NetworkVersion;
@@ -26,9 +26,7 @@ const DEFAULT_BASE_FEE: u64 = 100;
 
 /// Wrapper around `fvm` Executor with sane defaults.
 pub struct KytheraExecutor {
-    inner: DefaultExecutor<
-        DefaultKernel<DefaultCallManager<KytheraMachine<MemoryBlockstore, FakeExterns>>>,
-    >,
+    inner: DefaultExecutor<KytheraKernel>,
     account_address: Address,
     test_address: Address,
     target_actor_id: RawBytes,
@@ -47,6 +45,10 @@ impl KytheraExecutor {
         let mut nc = NetworkConfig::new(NETWORK_VERSION);
         nc.override_actors(builtin_actors);
         nc.enable_actor_debugging();
+        // If chain Id is 0 (invalid value) we set our default
+        if nc.chain_id == ChainID::from(0) {
+            nc.chain_id = ChainID::from(KYTHERA_NETWORK_ID)
+        }
 
         let mut mc = nc.for_epoch(0, 0, state_root);
         mc.set_base_fee(TokenAmount::from_atto(DEFAULT_BASE_FEE))
@@ -61,8 +63,12 @@ impl KytheraExecutor {
             .preload(&blockstore, &code_cids)
             .expect("Should be able to preload Executor");
 
-        let machine = KytheraMachine::new(&mc, blockstore, FakeExterns::new())
-            .expect("Should be able to start KytheraMachine");
+        let machine = KytheraMachine::<DefaultMachine<MemoryBlockstore, FakeExterns>>::new(
+            mc,
+            blockstore,
+            FakeExterns::new(),
+        )
+        .expect("Should be able to start KytheraMachine");
 
         Self {
             inner: DefaultExecutor::new(engine, machine).expect("Should be able to start Executor"),
@@ -83,7 +89,7 @@ impl KytheraExecutor {
             to: self.test_address,
             gas_limit: 1000000000,
             method_num,
-            params: self.target_actor_id.clone().into(),
+            params: self.target_actor_id.clone(),
             sequence,
             ..Message::default()
         };
@@ -99,12 +105,20 @@ impl KytheraExecutor {
             .flush()
             .expect("Should be able to flush Executor");
 
-        let blockstore = self
+        let mut machine: KytheraMachine = self
             .inner
             .into_machine()
-            .expect("Machine should exist at this point")
-            .into_store()
-            .into_inner();
-        (root, blockstore)
+            .expect("Machine should exist at this point");
+
+        machine.state_tree_mut();
+
+        let buff_blockstore = machine.into_store();
+        buff_blockstore
+            .flush(&root)
+            .expect("Should be able to flush Buffered Blockstore");
+
+        let memory_blockstore = buff_blockstore.into_inner();
+
+        (root, memory_blockstore)
     }
 }

@@ -27,28 +27,26 @@ where
 
 #[no_mangle]
 fn invoke(_input: u32) -> u32 {
-    let method_num = sdk::message::method_number();
+    let method_num = fvm_sdk::message::method_number();
     match_method!(
         method_num,
         {
-            "TestOne" => return_ipld(TestOne()).unwrap(),
-            "TestTwo" => return_ipld(TestTwo()).unwrap(),
+            "Caller" => {
+                let mc_caller: u64 = unsafe { fvm_sdk::sys::vm::message_context().unwrap().caller };
+
+                return_ipld(&mc_caller).unwrap()
+            },
+            "Origin" => {
+                let mc_origin: u64 = unsafe { fvm_sdk::sys::vm::message_context().unwrap().origin };
+
+                return_ipld(&mc_origin).unwrap()
+            },
             _ => {
-                sdk::vm::abort(
+                fvm_sdk::vm::abort(
                     ExitCode::USR_UNHANDLED_MESSAGE.value(),
                     Some("Unknown method number"),
                 );
             }
         }
     )
-}
-
-#[allow(non_snake_case)]
-fn TestOne() -> &'static str {
-    "TestOne"
-}
-
-#[allow(non_snake_case)]
-fn TestTwo() -> &'static str {
-    "TestTwo"
 }

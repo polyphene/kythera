@@ -140,8 +140,8 @@ mod tests {
     use std::{fs::File, io::Write};
 
     use assert_cmd::Command;
+    use kythera_actors::wasm_bin::test_actors::BASIC_TEST_ACTOR_BINARY;
     use kythera_lib::{to_vec, Abi, Method};
-    use kythera_test_actors::wasm_bin::{BASIC_TEST_ACTOR_BINARY, FAILED_TEST_ACTOR_BINARY};
     use predicates::str::contains;
     use tempfile::{tempdir, TempDir};
 
@@ -248,7 +248,7 @@ mod tests {
     #[test]
     fn outputs_failed_tests() {
         let dir = create_target_and_test_actors(
-            FAILED_TEST_ACTOR_BINARY,
+            BASIC_TEST_ACTOR_BINARY,
             &Abi {
                 constructor: None,
                 set_up: None,
@@ -271,7 +271,7 @@ mod tests {
             ))
             .stdout(contains("left: `2`,"))
             .stdout(contains(
-                "right: `3`\', test_actors/actors/failed_test_actor/src/actor.rs:41:5 (24)",
+                "right: `3`\', actors/test_actors/basic_test_actor/src/actor.rs:72:5 (24)",
             ))
             .stdout(contains("test result: FAILED. 0 passed; 1 failed"));
     }

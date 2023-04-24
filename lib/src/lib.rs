@@ -8,13 +8,17 @@ pub use kythera_common::{
     abi::{pascal_case_split, Abi, Method, MethodType},
     from_slice, to_vec,
 };
-pub use kythera_fvm::executor::ApplyRet;
-pub use kythera_fvm::trace::ExecutionEvent;
+
+pub use kythera_fvm::{
+    executor::{ApplyRet, KytheraExecutor},
+    trace::ExecutionEvent,
+    Account,
+};
 
 use core::fmt;
-use kythera_fvm::{executor::KytheraExecutor, Account};
 use std::sync::mpsc::Sender;
 
+use fvm_ipld_encoding::RawBytes;
 use fvm_shared::{address::Address, bigint::Zero, econ::TokenAmount, error::ExitCode};
 
 use error::Error;
@@ -148,6 +152,7 @@ impl Tester {
         let mut state_tree = StateTree::new();
 
         let builtin_actors = state_tree.load_builtin_actors();
+        state_tree.load_kythera_actors();
         let account = state_tree.create_account(*builtin_actors.manifest.get_account_code());
 
         Self {
@@ -192,7 +197,9 @@ impl Tester {
             .ok_or(Error::MissingActor)?;
 
         let target_id = match target.address.id() {
-            Ok(id) => id.to_ne_bytes().to_vec(),
+            Ok(id) => {
+                RawBytes::new(to_vec(&id).expect("Should be able to serialize target actor ID"))
+            }
             Err(_) => panic!("Actor Id should be valid"),
         };
 
@@ -226,7 +233,7 @@ impl Tester {
                     self.builtin_actors.root,
                     self.account.1,
                     test_address,
-                    target_id.clone().into(),
+                    target_id.clone(),
                 );
 
                 // Run the constructor if it exists.
@@ -237,14 +244,14 @@ impl Tester {
                                 let source = apply_ret.failure_info.map(|f| f.to_string().into());
                                 return TestActorResults {
                                     test_actor,
-                                    results: Err(Error::ConstructorError { source }),
+                                    results: Err(Error::Constructor { source }),
                                 };
                             }
                         }
                         Err(err) => {
                             return TestActorResults {
                                 test_actor,
-                                results: Err(Error::ConstructorError {
+                                results: Err(Error::Constructor {
                                     source: Some(err.into()),
                                 }),
                             }
@@ -260,14 +267,14 @@ impl Tester {
                                 let source = apply_ret.failure_info.map(|f| f.to_string().into());
                                 return TestActorResults {
                                     test_actor,
-                                    results: Err(Error::SetupError { source }),
+                                    results: Err(Error::Setup { source }),
                                 };
                             }
                         }
                         Err(err) => {
                             return TestActorResults {
                                 test_actor,
-                                results: Err(Error::SetupError {
+                                results: Err(Error::Setup {
                                     source: Some(err.into()),
                                 }),
                             }
@@ -306,7 +313,7 @@ impl Tester {
                                     self.builtin_actors.root,
                                     self.account.1,
                                     test_address,
-                                    target_id.clone().into(),
+                                    target_id.clone(),
                                 );
 
                                 log::debug!(
@@ -360,9 +367,8 @@ impl Default for Tester {
 
 #[cfg(test)]
 mod tests {
-    use fvm_ipld_blockstore::Blockstore;
-
     use super::*;
+    use fvm_ipld_blockstore::Blockstore;
 
     #[test]
     fn test_tester_instantiation() {

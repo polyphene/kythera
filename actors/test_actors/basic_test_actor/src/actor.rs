@@ -2,9 +2,29 @@
 // SPDX-License-Identifier: Apache-2.0, MIT
 
 use frc42_dispatch::match_method;
+use fvm_ipld_encoding::DAG_CBOR;
 use fvm_sdk as sdk;
 use fvm_sdk::NO_DATA_BLOCK_ID;
 use fvm_shared::error::ExitCode;
+use sdk::sys::ErrorNumber;
+use serde::ser;
+use thiserror::Error;
+
+#[derive(Error, Debug)]
+enum IpldError {
+    #[error("ipld encoding error: {0}")]
+    Encoding(#[from] fvm_ipld_encoding::Error),
+    #[error("ipld blockstore error: {0}")]
+    Blockstore(#[from] ErrorNumber),
+}
+
+fn return_ipld<T>(value: &T) -> std::result::Result<u32, IpldError>
+where
+    T: ser::Serialize + ?Sized,
+{
+    let bytes = fvm_ipld_encoding::to_vec(value)?;
+    Ok(sdk::ipld::put_block(DAG_CBOR, bytes.as_slice())?)
+}
 
 #[no_mangle]
 fn invoke(_input: u32) -> u32 {
@@ -20,6 +40,8 @@ fn invoke(_input: u32) -> u32 {
     match_method!(
         method_num,
         {
+            "TestOne" => return_ipld(TestOne()).unwrap(),
+            "TestTwo" => return_ipld(TestTwo()).unwrap(),
             "TestFailed" => {
                 TestFailed();
 
@@ -35,7 +57,16 @@ fn invoke(_input: u32) -> u32 {
     )
 }
 
-// Checks that all relevant builtins are deployed at a correct actor Id in Kythera
+#[allow(non_snake_case)]
+fn TestOne() -> &'static str {
+    "TestOne"
+}
+
+#[allow(non_snake_case)]
+fn TestTwo() -> &'static str {
+    "TestTwo"
+}
+
 #[allow(non_snake_case)]
 fn TestFailed() {
     assert_eq!(1 + 1, 3);

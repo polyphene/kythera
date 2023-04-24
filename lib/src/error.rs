@@ -6,12 +6,12 @@
 #[derive(Debug, thiserror::Error)]
 pub enum Error {
     #[error("Constructor exit code was not ok")]
-    ConstructorError {
+    Constructor {
         #[source]
         source: Option<Box<dyn std::error::Error + Sync + Send>>,
     },
     #[error("Setup exit code was not ok")]
-    SetupError {
+    Setup {
         #[source]
         source: Option<Box<dyn std::error::Error + Sync + Send>>,
     },
