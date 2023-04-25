@@ -4,7 +4,7 @@ use colored::Colorize;
 use kythera_lib::{ApplyRet, ExecutionEvent, TestResult, TestResultType, Tester, WasmActor};
 use std::{
     path::PathBuf,
-    sync::mpsc::{channel, sync_channel, Receiver, SyncSender},
+    sync::mpsc::{sync_channel, Receiver, SyncSender},
     thread,
 };
 
@@ -33,7 +33,7 @@ pub(crate) fn test(args: &TestArgs) -> anyhow::Result<()> {
         // Create two channels, one for streaming the result,
         // and another for synchronization when the streaming is over.
         let (sync_tx, sync_rx) = sync_channel(1);
-        let (stream_tx, stream_rx) = channel();
+        let (stream_tx, stream_rx) = sync_channel(10);
         let mut tester = Tester::new();
         tester.deploy_target_actor(test.actor)?;
         let verbosity = args.verbosity;

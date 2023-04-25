@@ -16,7 +16,7 @@ pub use kythera_fvm::{
 };
 
 use core::fmt;
-use std::sync::mpsc::Sender;
+use std::sync::mpsc::SyncSender;
 
 use fvm_ipld_encoding::RawBytes;
 use fvm_shared::{address::Address, bigint::Zero, econ::TokenAmount, error::ExitCode};
@@ -188,7 +188,7 @@ impl Tester {
     pub fn test<'a>(
         &mut self,
         test_actors: &'a [WasmActor],
-        stream_results: Option<Sender<(WasmActor, TestResult)>>,
+        stream_results: Option<SyncSender<(WasmActor, TestResult)>>,
     ) -> Result<Vec<TestActorResults<'a>>, Error> {
         let target = self
             .target_actor
