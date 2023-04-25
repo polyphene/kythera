@@ -1,3 +1,5 @@
+mod gas_report;
+
 use crate::utils::search::search_files;
 use clap::{ArgAction, Args};
 use colored::Colorize;
@@ -7,6 +9,8 @@ use std::{
     sync::mpsc::{sync_channel, Receiver, SyncSender},
     thread,
 };
+
+use self::gas_report::GasReport;
 
 /// Kythera test command cli arguments.
 #[derive(Args, Debug)]
@@ -24,25 +28,48 @@ pub(crate) struct TestArgs {
     /// - 3: Print execution traces for all tests, and setup traces for failing tests
     #[clap(long, short, verbatim_doc_comment, action = ArgAction::Count)]
     pub verbosity: u8,
+
+    /// Print gas reports.
+    #[clap(long)]
+    gas_report: bool,
 }
 
 /// Kythera cli test command.
 pub(crate) fn test(args: &TestArgs) -> anyhow::Result<()> {
+    let mut gas_report = GasReport::default();
     let tests = search_files(&args.path)?;
-    for test in tests {
+    for test in &tests {
         // Create two channels, one for streaming the result,
         // and another for synchronization when the streaming is over.
         let (sync_tx, sync_rx) = sync_channel(1);
         let (stream_tx, stream_rx) = sync_channel(10);
         let mut tester = Tester::new();
-        tester.deploy_target_actor(test.actor)?;
+        tester.deploy_target_actor(&test.actor)?;
         let verbosity = args.verbosity;
         thread::spawn(move || stream_results(stream_rx, sync_tx, verbosity));
-        let _results = tester.test(&test.tests, Some(stream_tx))?;
+        let test_results = tester.test(&test.tests, Some(stream_tx))?;
         sync_rx
             .recv()
             .expect("Should be able to sync the end of streaming results");
+
+        if args.gas_report {
+            let valid: Vec<&TestResult> = test_results
+                .iter()
+                .filter_map(|t| t.results.as_ref().ok())
+                .flatten()
+                .collect();
+
+            gas_report.analyze(&test.actor, &valid);
+        }
     }
+
+    if args.gas_report {
+        log::info!("\nGas report");
+        for table in gas_report.finalize() {
+            log::info!("{table}");
+        }
+    }
+
     Ok(())
 }
 
