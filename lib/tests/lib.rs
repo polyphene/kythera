@@ -20,7 +20,7 @@ fn set_target_actor(tester: &mut Tester, name: String, binary: Vec<u8>, abi: Abi
     let target_actor = WasmActor::new(name, binary, abi);
 
     tester
-        .deploy_target_actor(target_actor)
+        .deploy_target_actor(&target_actor)
         .expect("Could not set target Actor when testing if builtins are properly deployed");
 }
 

@@ -1,6 +1,7 @@
 // Copyright 2023 Polyphene.
 // SPDX-License-Identifier: Apache-2.0, MIT
 
+use std::borrow::Borrow;
 use std::fmt;
 
 use anyhow::Result;
@@ -153,6 +154,12 @@ pub struct Method {
 impl fmt::Display for Method {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(f, "{} - {}", self.number(), self.name())
+    }
+}
+
+impl Borrow<u64> for Method {
+    fn borrow(&self) -> &u64 {
+        &self.number
     }
 }
 
