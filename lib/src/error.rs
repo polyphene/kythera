@@ -5,13 +5,15 @@
 
 #[derive(Debug, thiserror::Error)]
 pub enum Error {
-    #[error("Constructor exit code was not ok")]
+    #[error("Constructor execution failed for actor: {name}")]
     Constructor {
+        name: String,
         #[source]
         source: Option<Box<dyn std::error::Error + Sync + Send>>,
     },
-    #[error("Setup exit code was not ok")]
+    #[error("Setup execution failed for actor: {name}")]
     Setup {
+        name: String,
         #[source]
         source: Option<Box<dyn std::error::Error + Sync + Send>>,
     },
@@ -23,11 +25,19 @@ pub enum Error {
         #[source]
         source: Box<dyn std::error::Error + Sync + Send>,
     },
+    #[error("StateTree error: {msg}")]
+    StateTree { msg: String },
     #[error("Tester error: {msg}")]
     Tester {
         msg: String,
         #[source]
         source: Option<Box<dyn std::error::Error + Sync + Send>>,
+    },
+    #[error("Validator error: {msg}")]
+    Validator {
+        msg: String,
+        #[source]
+        source: Box<dyn std::error::Error + Sync + Send>,
     },
 }
 
@@ -37,7 +47,10 @@ pub trait WrapFVMError<T> {
     fn tester_err(self, msg: &str) -> Result<T, Error>;
 
     /// Wrap the source `Error` with an `Error::SettingActor`.
-    fn setting_err(self, msg: &str) -> Result<T, Error>;
+    fn setting_err(self, name: &str) -> Result<T, Error>;
+
+    /// Wrap the source `Error` with an `Error::Validator`.
+    fn validator_err(self, msg: &str) -> Result<T, Error>;
 }
 
 impl<T, E> WrapFVMError<T> for Result<T, E>
@@ -54,6 +67,13 @@ where
     fn setting_err(self, name: &str) -> Result<T, Error> {
         self.map_err(|err| Error::SettingActor {
             name: name.into(),
+            source: err.into(),
+        })
+    }
+
+    fn validator_err(self, msg: &str) -> Result<T, Error> {
+        self.map_err(|err| Error::Validator {
+            msg: msg.into(),
             source: err.into(),
         })
     }

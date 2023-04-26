@@ -434,4 +434,19 @@ impl StateTree {
         self.deploy_actor_from_bin_at_address(&actor_address_id, actor, balance)?;
         Ok(actor_address_id)
     }
+
+    /// Override current inner `StateTree` with a new `Blockstore` and root `Cid`
+    pub fn override_inner(&mut self, blockstore: MemoryBlockstore, root: Cid) -> Result<(), Error> {
+        if !blockstore
+            .has(&root)
+            .expect("Should be able to check if blockstore contains root Cid")
+        {
+            return Err(Error::StateTree {
+                msg: String::from("Provided blockstore does not contain root Cid"),
+            });
+        }
+        self.inner = kythera_fvm::state_tree::StateTree::new_from_root(blockstore, &root)
+            .expect("Should be able to override inner StateTree");
+        Ok(())
+    }
 }

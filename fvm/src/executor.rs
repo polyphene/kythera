@@ -28,7 +28,6 @@ const DEFAULT_BASE_FEE: u64 = 100;
 pub struct KytheraExecutor {
     inner: DefaultExecutor<KytheraKernel>,
     account_address: Address,
-    test_address: Address,
     target_actor_id: RawBytes,
 }
 
@@ -39,7 +38,6 @@ impl KytheraExecutor {
         state_root: Cid,
         builtin_actors: Cid,
         account_address: Address,
-        test_address: Address,
         target_actor_id: RawBytes,
     ) -> Self {
         let mut nc = NetworkConfig::new(NETWORK_VERSION);
@@ -73,7 +71,6 @@ impl KytheraExecutor {
         Self {
             inner: DefaultExecutor::new(engine, machine).expect("Should be able to start Executor"),
             account_address,
-            test_address,
             target_actor_id,
         }
     }
@@ -81,12 +78,13 @@ impl KytheraExecutor {
     /// Execute the provided method.
     pub fn execute_method(
         &mut self,
+        to: Address,
         method_num: MethodNum,
         sequence: u64,
     ) -> Result<ApplyRet, anyhow::Error> {
         let message = Message {
             from: self.account_address,
-            to: self.test_address,
+            to,
             gas_limit: 1000000000,
             method_num,
             params: self.target_actor_id.clone(),
