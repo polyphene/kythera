@@ -4,6 +4,7 @@ use colored::Colorize;
 use kythera_lib::{
     ApplyRet, ExecutionEvent, MethodType, TestResult, TestResultType, Tester, WasmActor,
 };
+use std::error::Error;
 use std::{
     path::PathBuf,
     sync::mpsc::{channel, sync_channel, Receiver, SyncSender},
@@ -39,20 +40,32 @@ pub(crate) fn test(args: &TestArgs) -> anyhow::Result<()> {
 
         log::info!("  Running Tests for Actor : {}", test.actor.name());
         let mut tester = Tester::new();
-        // TODO Need to test if this error. If that's the case then continue
         match tester.deploy_target_actor(test.actor) {
             Err(err) => {
-                dbg!(&err);
-                return Err(err.into());
+                log::error!("\nError: {}", err);
+                match err.source() {
+                    Some(source) => log::error!("Caused by: {}", source),
+                    _ => {}
+                };
+                sync_rx
+                    .recv()
+                    .expect("Should be able to sync the end of streaming results");
+                continue;
             }
             _ => {}
         };
         let verbosity = args.verbosity;
         thread::spawn(move || stream_results(stream_rx, sync_tx, verbosity));
-        dbg!("---------------------------------------------");
-        // TODO Need to test if this error. If that's the case then continue. Might also be sent to stream result, to check
-        let _results = tester.test(&test.tests, Some(stream_tx))?;
-        dbg!("BAAAAAAAAAAAAAAAAAAAAAAAABO");
+        match tester.test(&test.tests, Some(stream_tx)) {
+            Err(err) => {
+                log::error!("\nError: {}", err);
+                match err.source() {
+                    Some(source) => log::error!("Caused by: {}", source),
+                    _ => {}
+                };
+            }
+            _ => {}
+        };
         sync_rx
             .recv()
             .expect("Should be able to sync the end of streaming results");
@@ -60,32 +73,50 @@ pub(crate) fn test(args: &TestArgs) -> anyhow::Result<()> {
     Ok(())
 }
 
-/// Stream the results received from `Tester::test,
-/// so that users see the result of each test as soon as it finishes.
+/// Stream the results received from `Tester::test, so that users see the result of each test as
+/// soon as it finishes.
 fn stream_results(
-    stream: Receiver<(WasmActor, TestResult)>,
+    stream: Receiver<(WasmActor, Result<TestResult, kythera_lib::error::Error>)>,
     sync_tx: SyncSender<()>,
     verbosity: u8,
 ) {
     let mut tests_failed = vec![];
     let mut tests_passed = vec![];
     let mut result = "ok".green();
-    for (_actor, test_result) in stream {
-        log::info!("{test_result}");
-        match test_result.ret() {
-            TestResultType::Passed(apply_ret) | TestResultType::Failed(apply_ret) => {
-                log::info!("(gas consumption: {})", apply_ret.msg_receipt.gas_used);
-                if verbosity >= 2 {
-                    print_verbose_traces(apply_ret);
-                }
-                if test_result.passed() {
-                    tests_passed.push(test_result);
-                } else {
-                    tests_failed.push(test_result);
+    for (_actor, res) in stream {
+        match res {
+            // This match branch means that we tried to handle the test method.
+            Ok(test_result) => {
+                log::info!("{test_result}");
+                match test_result.ret() {
+                    TestResultType::Passed(apply_ret) | TestResultType::Failed(apply_ret) => {
+                        log::info!("(gas consumption: {})", apply_ret.msg_receipt.gas_used);
+                        if verbosity >= 2 {
+                            print_verbose_traces(apply_ret);
+                        }
+                        if test_result.passed() {
+                            tests_passed.push(test_result);
+                        } else {
+                            tests_failed.push(test_result);
+                        }
+                    }
+                    TestResultType::Erred(_) => {
+                        tests_failed.push(test_result);
+                    }
                 }
             }
-            TestResultType::Erred(_) => {
-                tests_failed.push(test_result);
+            // This match branch means that there was a problem when setting up the test actor.
+            Err(err) => {
+                result = "FAILED".bright_red();
+                log::error!("\nError: {}", err);
+                match err.source() {
+                    Some(source) => log::error!("Caused by: {}", source),
+                    _ => {}
+                };
+                log::info!("test result: {result}. 0 passed; 0 failed\n");
+                sync_tx
+                    .send(())
+                    .expect("Should be able to sync finish streaming results");
             }
         }
     }
@@ -94,24 +125,22 @@ fn stream_results(
     // we print the sum of failed and passed tests.
     if !tests_failed.is_empty() {
         result = "FAILED".bright_red();
-        log::info!("\nfailures:");
+        log::error!("\nfailures:");
         for f in tests_failed.iter() {
-            log::info!("test {}", f.method());
+            log::error!("test {}", f.method());
             match (f.method().r#type(), f.ret()) {
                 (_, TestResultType::Erred(err)) => {
-                    dbg!("BOOOOOOOBA");
-                    log::info!("{}", f.method());
-                    log::info!("\nError: {err}");
+                    log::error!("\nError: {err}");
                 }
                 (MethodType::Test, TestResultType::Failed(apply_ret)) => {
                     let info = apply_ret
                         .failure_info
                         .as_ref()
                         .expect("Failure info should be available");
-                    log::info!("failed: {info}");
+                    log::error!("failed: {info}");
                 }
                 (MethodType::TestFail, TestResultType::Failed(_)) => {
-                    log::info!("failed: test exited with exit code 0");
+                    log::error!("failed: test exited with exit code 0");
                 }
                 (_, TestResultType::Passed(_)) => panic!("Test should have failed"),
                 _ => panic!("Failed tests should be of type test or test fail"),
@@ -119,7 +148,7 @@ fn stream_results(
         }
     }
     log::info!(
-        "\ntest result: {result}. {} passed; {} failed\n",
+        "test result: {result}. {} passed; {} failed\n",
         tests_passed.len(),
         tests_failed.len()
     );

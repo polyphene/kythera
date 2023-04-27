@@ -25,15 +25,15 @@ pub enum Error {
         #[source]
         source: Box<dyn std::error::Error + Sync + Send>,
     },
-    #[error("StateTree error: {msg}")]
+    #[error("{msg}")]
     StateTree { msg: String },
-    #[error("Tester error: {msg}")]
+    #[error("{msg}")]
     Tester {
         msg: String,
         #[source]
         source: Option<Box<dyn std::error::Error + Sync + Send>>,
     },
-    #[error("Validator error: {msg}")]
+    #[error("{msg}")]
     Validator {
         msg: String,
         #[source]

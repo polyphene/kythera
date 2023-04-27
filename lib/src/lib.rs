@@ -26,7 +26,7 @@ use crate::validator::validate_wasm_bin;
 use error::Error;
 use state_tree::{BuiltInActors, StateTree};
 
-mod error;
+pub mod error;
 mod state_tree;
 mod validator;
 
@@ -194,7 +194,7 @@ impl Tester {
     pub fn test<'a>(
         &mut self,
         test_actors: &'a [WasmActor],
-        stream_results: Option<Sender<(WasmActor, TestResult)>>,
+        stream_results: Option<Sender<(WasmActor, Result<TestResult, Error>)>>,
     ) -> Result<Vec<TestActorResults<'a>>, Error> {
         // Get target actor Id to pass it to test methods.
         let target = self
@@ -255,16 +255,37 @@ impl Tester {
         Ok(test_actors
             .iter()
             .map(|test_actor| {
+                log::info!(
+                    "{}: testing {} tests",
+                    test_actor.name(),
+                    test_actor.abi().methods().len()
+                );
                 // Validate actor bin
                 match validate_wasm_bin(test_actor.code()) {
                     Err(err) => {
+                        // First we notify our stream that the test actor setup failed.
+                        if let Some(ref sender) = stream_results {
+                            if let Err(err) = sender.send((
+                                test_actor.clone(),
+                                Err(Error::Tester {
+                                    msg: format!(
+                                        "Non valid test actor wasm file: {}",
+                                        test_actor.name
+                                    ),
+                                    source: Some(err.clone().into()),
+                                }),
+                            )) {
+                                log::error!("Could not Stream the Result: {err}");
+                            }
+                        }
+                        // Then return to move on to the next test file.
                         return TestActorResults {
                             test_actor,
                             results: Err(Error::Tester {
                                 msg: format!("Non valid test actor wasm file: {}", test_actor.name),
                                 source: Some(err.into()),
                             }),
-                        }
+                        };
                     }
                     _ => {}
                 }
@@ -278,10 +299,17 @@ impl Tester {
                     Ok(test_address) => test_address,
                     // Error on deployment, return error as part of [`TestResults`]
                     Err(err) => {
+                        // First we notify our stream that the test actor setup failed.
+                        if let Some(ref sender) = stream_results {
+                            if let Err(err) = sender.send((test_actor.clone(), Err(err.into()))) {
+                                log::error!("Could not Stream the Result: {err}");
+                            }
+                        }
+                        // Then return to move on to the next test file.
                         return TestActorResults {
                             test_actor,
-                            results: Err(err),
-                        }
+                            results: Err(err.into()),
+                        };
                     }
                 };
 
@@ -305,24 +333,50 @@ impl Tester {
                     ) {
                         Ok(apply_ret) => {
                             if apply_ret.msg_receipt.exit_code != ExitCode::OK {
-                                let source = apply_ret.failure_info.map(|f| f.to_string().into());
+                                let source = apply_ret.failure_info.map(|f| f.to_string());
+                                // First we notify our stream that the setup failed.
+                                if let Some(ref sender) = stream_results {
+                                    if let Err(err) = sender.send((
+                                        test_actor.clone(),
+                                        Err(Error::Constructor {
+                                            name: test_actor.name().to_string(),
+                                            source: source.clone().map(|f| f.into()),
+                                        }),
+                                    )) {
+                                        log::error!("Could not Stream the Result: {err}");
+                                    }
+                                }
+                                // Then return to move on to the next test file.
                                 return TestActorResults {
                                     test_actor,
                                     results: Err(Error::Constructor {
                                         name: test_actor.name().to_string(),
-                                        source,
+                                        source: source.map(|f| f.into()),
                                     }),
                                 };
                             }
                         }
                         Err(err) => {
+                            // First we notify our stream that the setup failed.
+                            if let Some(ref sender) = stream_results {
+                                if let Err(err) = sender.send((
+                                    test_actor.clone(),
+                                    Err(Error::Constructor {
+                                        name: test_actor.name().to_string(),
+                                        source: Some(err.into()),
+                                    }),
+                                )) {
+                                    log::error!("Could not Stream the Result: {err}");
+                                }
+                            }
+                            // Then return to move on to the next test file.
                             return TestActorResults {
                                 test_actor,
                                 results: Err(Error::Constructor {
                                     name: test_actor.name().to_string(),
                                     source: Some(err.into()),
                                 }),
-                            }
+                            };
                         }
                     }
                 }
@@ -336,24 +390,50 @@ impl Tester {
                     ) {
                         Ok(apply_ret) => {
                             if apply_ret.msg_receipt.exit_code != ExitCode::OK {
-                                let source = apply_ret.failure_info.map(|f| f.to_string().into());
+                                let source = apply_ret.failure_info.map(|f| f.to_string());
+                                // First we notify our stream that the setup failed.
+                                if let Some(ref sender) = stream_results {
+                                    if let Err(err) = sender.send((
+                                        test_actor.clone(),
+                                        Err(Error::Setup {
+                                            name: test_actor.name().to_string(),
+                                            source: source.clone().map(|f| f.into()),
+                                        }),
+                                    )) {
+                                        log::error!("Could not Stream the Result: {err}");
+                                    }
+                                }
+                                // Then return to move on to the next test file.
                                 return TestActorResults {
                                     test_actor,
                                     results: Err(Error::Setup {
                                         name: test_actor.name().to_string(),
-                                        source,
+                                        source: source.map(|f| f.into()),
                                     }),
                                 };
                             }
                         }
                         Err(err) => {
+                            // First we notify our stream that the setup failed.
+                            if let Some(ref sender) = stream_results {
+                                if let Err(err) = sender.send((
+                                    test_actor.clone(),
+                                    Err(Error::Setup {
+                                        name: test_actor.name().to_string(),
+                                        source: Some(err.into()),
+                                    }),
+                                )) {
+                                    log::error!("Could not Stream the Result: {err}");
+                                }
+                            }
+                            // Then return to move on to the next test file.
                             return TestActorResults {
                                 test_actor,
                                 results: Err(Error::Setup {
                                     name: test_actor.name().to_string(),
                                     source: Some(err.into()),
                                 }),
-                            }
+                            };
                         }
                     }
                 }
@@ -370,11 +450,6 @@ impl Tester {
                 // one possible concurrent engine.
                 // The following steps will not end up in a result. Either we could finalize message
                 // handling and we return the related ApplyRet or we return nothing.
-                log::info!(
-                    "{}: testing {} tests",
-                    test_actor.name(),
-                    test_actor.abi().methods().len()
-                );
                 TestActorResults {
                     test_actor,
                     results: Ok(test_actor
@@ -427,7 +502,8 @@ impl Tester {
                                 ret,
                             };
                             if let Some(ref sender) = stream_results {
-                                if let Err(err) = sender.send((test_actor.clone(), result.clone()))
+                                if let Err(err) =
+                                    sender.send((test_actor.clone(), Ok(result.clone())))
                                 {
                                     log::error!("Could not Stream the Result: {err}");
                                 }
