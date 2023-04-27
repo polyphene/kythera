@@ -236,48 +236,55 @@ impl Tester {
                     target_id.clone(),
                 );
 
-                // Run the constructor if it exists.
-                if let Some(constructor) = test_actor.abi().constructor() {
-                    match executor.execute_method(constructor.number(), self.next_sequence()) {
-                        Ok(apply_ret) => {
-                            if apply_ret.msg_receipt.exit_code != ExitCode::OK {
-                                let source = apply_ret.failure_info.map(|f| f.to_string().into());
-                                return TestActorResults {
-                                    test_actor,
-                                    results: Err(Error::Constructor { source }),
-                                };
-                            }
-                        }
-                        Err(err) => {
-                            return TestActorResults {
-                                test_actor,
-                                results: Err(Error::Constructor {
-                                    source: Some(err.into()),
-                                }),
-                            }
-                        }
-                    }
-                }
+                // Run Constructor and Setup if they exist.
+                let pre_test = [test_actor.abi().constructor(), test_actor.abi().set_up()]
+                    .into_iter()
+                    .flatten();
 
-                // Run Setup if it exists.
-                if let Some(set_up) = test_actor.abi().set_up() {
-                    match executor.execute_method(set_up.number(), self.next_sequence()) {
+                for method in pre_test {
+                    match executor.execute_method(method.number(), self.next_sequence()) {
                         Ok(apply_ret) => {
                             if apply_ret.msg_receipt.exit_code != ExitCode::OK {
-                                let source = apply_ret.failure_info.map(|f| f.to_string().into());
+                                let source = apply_ret
+                                    .failure_info
+                                    .expect(
+                                        "Failure info should be available when ExitCode is not Ok",
+                                    )
+                                    .to_string();
+                                let result = TestResult {
+                                    method: method.clone(),
+                                    ret: TestResultType::Erred(source),
+                                };
+                                if let Some(ref sender) = stream_results {
+                                    if let Err(err) =
+                                        sender.send((test_actor.clone(), result.clone()))
+                                    {
+                                        log::error!("Could not Stream the Result: {err}");
+                                    }
+                                }
+                                // If Constructor or Setup failed we return early and don't run subsequent tests.
                                 return TestActorResults {
                                     test_actor,
-                                    results: Err(Error::Setup { source }),
+                                    results: Ok(vec![result]),
                                 };
                             }
                         }
                         Err(err) => {
+                            let result = TestResult {
+                                method: method.clone(),
+                                ret: TestResultType::Erred(err.to_string()),
+                            };
+                            if let Some(ref sender) = stream_results {
+                                if let Err(err) = sender.send((test_actor.clone(), result.clone()))
+                                {
+                                    log::error!("Could not Stream the Result: {err}");
+                                }
+                            }
+                            // If Constructor or Setup failed we return early and don't run subsequent tests.
                             return TestActorResults {
                                 test_actor,
-                                results: Err(Error::Setup {
-                                    source: Some(err.into()),
-                                }),
-                            }
+                                results: Ok(vec![result]),
+                            };
                         }
                     }
                 }
@@ -297,12 +304,13 @@ impl Tester {
                     test_actor.name(),
                     test_actor.abi().methods().len()
                 );
+
                 TestActorResults {
                     test_actor,
                     results: Ok(
                         test_actor
-                            .abi
-                            .methods
+                            .abi()
+                            .methods()
                             .iter()
                             .map(|method| {
                                 // TODO is it possible to impl `Clone` for `DefaultExecutor`
