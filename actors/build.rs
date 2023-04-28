@@ -14,8 +14,6 @@ const TEST_ACTORS: &[&str] = &[
     "basic-target-actor",
     "builtins-test-actor",
     "cheatcodes-test-actor",
-    "demo-target-actor",
-    "demo-test-actor",
     "fail-test-actor",
 ];
 
