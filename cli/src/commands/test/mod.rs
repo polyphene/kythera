@@ -44,6 +44,7 @@ pub(crate) fn test(args: &TestArgs) -> anyhow::Result<()> {
             continue;
         };
 
+        // Filter the [`Method`]s to be test, `MethodType::Test` `MethodType::TestFail`.
         let populated_tests = test_target
             .tests
             .iter()
