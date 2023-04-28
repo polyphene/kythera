@@ -54,6 +54,7 @@ impl StateTree {
         Self { inner }
     }
 
+    /// Retrieve the expected sequence for a given actor from the [`StateTree`].
     pub fn actor_sequence(&self, actor_id: ActorID) -> Result<u64, Error> {
         match self.inner.get_actor(actor_id).unwrap() {
             Some(act) => Ok(act.sequence),
@@ -72,7 +73,7 @@ impl StateTree {
     pub fn store(&self) -> &MemoryBlockstore {
         self.inner.store()
     }
-    /// set actor on the `Blockstore`.
+    /// Set actor on the `Blockstore`.
     /// And activate them on the `StateTree`.
     fn set_actor<S: Serialize>(
         &mut self,

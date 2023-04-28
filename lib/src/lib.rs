@@ -21,7 +21,6 @@ use std::sync::mpsc::Sender;
 use fvm_ipld_encoding::RawBytes;
 use fvm_shared::{address::Address, bigint::Zero, econ::TokenAmount, error::ExitCode};
 
-use crate::error::WrapFVMError;
 use crate::validator::validate_wasm_bin;
 use error::Error;
 use state_tree::{BuiltInActors, StateTree};
@@ -170,10 +169,12 @@ impl Tester {
     /// Deploy the target Actor file into the `StateTree`.
     pub fn deploy_target_actor(&mut self, actor: WasmActor) -> Result<(), Error> {
         // Validate wasm bin.
-        validate_wasm_bin(actor.code()).tester_err(&format!(
-            "Non valid target actor wasm file: {}",
-            actor.name()
-        ))?;
+        if let Err(err) = validate_wasm_bin(actor.code()) {
+            return Err(Error::Tester {
+                msg: format!("Non valid target actor wasm file: {}", actor.name()),
+                source: Some(Box::from(err)),
+            });
+        }
 
         // Set actor bin.
         let address = self
@@ -269,7 +270,7 @@ impl Tester {
         if let Err(err) = validate_wasm_bin(test_actor.code()) {
             return Err(Error::Tester {
                 msg: format!("Non valid test actor wasm file: {}", test_actor.name),
-                source: Some(err.into()),
+                source: Some(Box::from(err)),
             });
         }
 

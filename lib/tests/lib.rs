@@ -6,6 +6,7 @@ use kythera_actors::wasm_bin::test_actors::{
 };
 use kythera_common::abi::{Abi, Method, MethodType};
 use kythera_fvm::executor::ApplyFailure::MessageBacktrace;
+use kythera_lib::error::Error;
 use kythera_lib::{TestResultType, Tester, WasmActor};
 
 fn set_target_actor(tester: &mut Tester, name: String, binary: Vec<u8>, abi: Abi) {
@@ -31,13 +32,14 @@ fn test_deploy_non_valid_target_actor() {
         },
     );
 
-    let res = tester.deploy_target_actor(target_actor);
-    assert!(res
-        .err()
-        .as_ref()
-        .unwrap()
-        .to_string()
-        .contains("Non valid target actor wasm file: Target.wasm"))
+    match tester.deploy_target_actor(target_actor).err().unwrap() {
+        Error::Tester { source, .. } => {
+            assert!(matches!(source.unwrap().as_ref(), &Error::Validator { .. }));
+        }
+        _ => {
+            panic!("Error should be triggered by non valid wasm bin");
+        }
+    }
 }
 
 #[test]
@@ -67,14 +69,12 @@ fn test_deploy_non_valid_test_actor() {
     let test_actor = WasmActor::new(String::from("Target.t.wasm"), test_wasm_bin, test_abi);
 
     // Run test
-    match tester.test(&test_actor.clone(), None) {
-        Err(err) => {
-            assert!(err
-                .to_string()
-                .contains("Non valid test actor wasm file: Target.t.wasm"));
+    match tester.test(&test_actor.clone(), None).err().unwrap() {
+        Error::Tester { source, .. } => {
+            assert!(matches!(source.unwrap().as_ref(), &Error::Validator { .. }));
         }
-        Ok(_) => {
-            panic!("Test should return Ok on non valid test actor");
+        _ => {
+            panic!("Error should be triggered by non valid wasm bin");
         }
     }
 }
@@ -95,12 +95,9 @@ fn test_failing_target_actor_constructor() {
     );
 
     let res = tester.deploy_target_actor(target_actor);
-    assert!(res
-        .err()
-        .as_ref()
-        .unwrap()
-        .to_string()
-        .contains("Constructor execution failed for actor: Target.wasm"));
+    if !matches!(res.err().unwrap(), Error::Constructor { .. }) {
+        panic!("Error should be triggered by error on Constructor execution");
+    }
 }
 
 #[test]
@@ -144,13 +141,13 @@ fn test_failing_test_actor_constructor_setup() {
         match tester.test(&test_actor, None) {
             Err(err) => {
                 if test_actor.name().contains("Constructor") {
-                    assert!(err
-                        .to_string()
-                        .contains("Constructor execution failed for actor: Constructor.t.wasm"));
+                    if !matches!(err, Error::Constructor { .. }) {
+                        panic!("Error should be triggered by error on Constructor execution");
+                    }
                 } else {
-                    assert!(err
-                        .to_string()
-                        .contains("Setup execution failed for actor: Setup.t.wasm"));
+                    if !matches!(err, Error::Setup { .. }) {
+                        panic!("Error should be triggered by error on Constructor execution");
+                    }
                 }
             }
             Ok(_) => {

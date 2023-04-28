@@ -34,7 +34,7 @@ pub(crate) fn test(args: &TestArgs) -> anyhow::Result<()> {
     let test_targets = search_files(&args.path)?;
     // Iterate through target actors and respective tests.
     for test_target in test_targets {
-        log::info!("  Running Tests for Actor : {}", test_target.actor.name());
+        log::info!("\tRunning Tests for Actor : {}", test_target.actor.name());
         let mut tester = Tester::new();
         if let Err(err) = tester.deploy_target_actor(test_target.actor) {
             log::error!("\nError: {}", err);
@@ -55,7 +55,7 @@ pub(crate) fn test(args: &TestArgs) -> anyhow::Result<()> {
             })
             .collect::<Vec<&WasmActor>>();
 
-        log::info!("\tTesting {} test files\n", populated_tests.len());
+        log::info!("\t\tTesting {} test files\n", populated_tests.len());
 
         // Iterate through test actors.
         for test in populated_tests {

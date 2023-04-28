@@ -31,7 +31,7 @@ pub enum Error {
     Tester {
         msg: String,
         #[source]
-        source: Option<Box<dyn std::error::Error + Sync + Send>>,
+        source: Option<Box<Error>>,
     },
     #[error("{msg}")]
     Validator {
@@ -43,9 +43,6 @@ pub enum Error {
 
 /// Helper trait for adding custom messages to inner Fvm errors.
 pub trait WrapFVMError<T> {
-    /// Wrap the source `Error` with an `Error::Tester`.
-    fn tester_err(self, msg: &str) -> Result<T, Error>;
-
     /// Wrap the source `Error` with an `Error::SettingActor`.
     fn setting_err(self, name: &str) -> Result<T, Error>;
 
@@ -57,13 +54,6 @@ impl<T, E> WrapFVMError<T> for Result<T, E>
 where
     E: Into<Box<dyn std::error::Error + Send + Sync + 'static>>,
 {
-    fn tester_err(self, msg: &str) -> Result<T, Error> {
-        self.map_err(|err| Error::Tester {
-            msg: msg.into(),
-            source: Some(err.into()),
-        })
-    }
-
     fn setting_err(self, name: &str) -> Result<T, Error> {
         self.map_err(|err| Error::SettingActor {
             name: name.into(),
