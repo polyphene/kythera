@@ -19,7 +19,7 @@ pub enum Error {
     },
     #[error("{msg}")]
     MissingActor { msg: String },
-    #[error("Could not set Actor: {name} on the BlockStore")]
+    #[error("Could not set Actor: {name} on the BlockStore: {source}")]
     SettingActor {
         name: String,
         #[source]
