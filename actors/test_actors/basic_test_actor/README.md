@@ -1,7 +1,13 @@
 ## Basic Test Actor
 
-This is a basic actor to test our Kythera testing framework. It has two main entry points: `TestOne()` and `TestTwo()`.
-
-Their entry point values, respectively `3948827889` and `891686990` have been calculated through the FRC 0042 and Helix 
-`frc42_dispatch` crate. We wanted to use the `frc42_dispatch::match_method!` macro to generate proper method number value at compilation
-time but we faced dependencies issue that prevented us from doing so for now.
+This is a basic actor to test our Kythera testing framework. It's entrypoints are:
+- `Constructor`: Method that should be called at deployment time of the test actor. It initializes the state of the actor.
+- `Setup`: Method that should be just before a call to a test method. Currently, it updates the state previously set by the 
+`Constructor`.
+- `TestConstructorSetup`: Method that we use in our tests to check that `Constructor` properly initializes the state and 
+that `Setup` updates it. This is the same thing as checking that they are called by Kythera.
+- `TestMethodParameter`: Method that checks the parameters passed to our test methods. Currently, it checks that we are 
+properly passing the target actor ID.
+- `TestFailed`: `Test*` method that fails for testing purposes.
+- `TestFailFailed`: `TestFail*` method that fails for testing purposes.
+- `TestFailSuccess`: Successful `TestFail*` method for testing purposes. 
