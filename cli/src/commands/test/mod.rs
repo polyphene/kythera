@@ -55,7 +55,7 @@ pub(crate) fn test(args: &TestArgs) -> anyhow::Result<()> {
             })
             .collect::<Vec<&WasmActor>>();
 
-        log::info!("    Testing {} test files\n", populated_tests.len());
+        log::info!("\tTesting {} test files\n", populated_tests.len());
 
         // Iterate through test actors.
         for test in populated_tests {
