@@ -403,7 +403,7 @@ impl Tester {
                 }
                 result
             })
-            .collect::<Vec<TestResult>>())
+            .collect())
     }
 }
 
