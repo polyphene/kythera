@@ -3175,7 +3175,6 @@ dependencies = [
  "rayon",
  "thiserror",
  "wasmparser 0.103.0",
- "wat",
 ]
 
 [[package]]

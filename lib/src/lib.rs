@@ -175,9 +175,55 @@ impl Tester {
             actor.name()
         ))?;
 
+        // Set actor bin.
         let address = self
             .state_tree
             .deploy_actor_from_bin(&actor, TokenAmount::zero())?;
+
+        let address_id = match address.id() {
+            Ok(id) => {
+                RawBytes::new(to_vec(&id).expect("Should be able to serialize target actor ID"))
+            }
+            Err(_) => panic!("Actor Id should be valid"),
+        };
+        // Instantiate executor.
+        let root = self.state_tree.flush();
+        let blockstore = self.state_tree.store().clone();
+        let mut executor = KytheraExecutor::new(
+            blockstore,
+            root,
+            self.builtin_actors.root,
+            self.account.1,
+            address_id,
+        );
+
+        // Run the constructor if it exists.
+        if let Some(constructor) = actor.abi().constructor() {
+            let sequence = self.state_tree.actor_sequence(self.account.0)?;
+
+            match executor.execute_method(address, constructor.number(), sequence) {
+                Ok(apply_ret) => {
+                    if apply_ret.msg_receipt.exit_code != ExitCode::OK {
+                        let source = apply_ret.failure_info.map(|f| f.to_string().into());
+                        return Err(Error::Constructor {
+                            name: actor.name().to_string(),
+                            source,
+                        });
+                    }
+                }
+                Err(err) => {
+                    return Err(Error::Constructor {
+                        name: actor.name().to_string(),
+                        source: Some(err.into()),
+                    });
+                }
+            }
+        }
+
+        // Update owned state tree
+        let (root, blockstore) = executor.into_store();
+        self.state_tree.override_inner(blockstore, root).unwrap();
+
         self.target_actor = Some(DeployedActor { actor, address });
 
         Ok(())
@@ -191,23 +237,51 @@ impl Tester {
     }
 
     /// Test an Actor on a `MemoryBlockstore`.
-    pub fn test<'a>(
+    pub fn test(
         &mut self,
-        test_actors: &'a [WasmActor],
-        stream_results: Option<Sender<(WasmActor, Result<TestResult, Error>)>>,
-    ) -> Result<Vec<TestActorResults<'a>>, Error> {
+        test_actor: &WasmActor,
+        stream_results: Option<Sender<(WasmActor, TestResult)>>,
+    ) -> Result<Vec<TestResult>, Error> {
         // Get target actor Id to pass it to test methods.
         let target = self
             .target_actor
             .as_ref()
             .cloned()
-            .ok_or(Error::MissingActor)?;
+            .ok_or(Error::MissingActor {
+                msg: "Main Actor not loaded".to_string(),
+            })?;
 
         let target_id = match target.address.id() {
             Ok(id) => {
                 RawBytes::new(to_vec(&id).expect("Should be able to serialize target actor ID"))
             }
             Err(_) => panic!("Actor Id should be valid"),
+        };
+
+        // Iterate over all test actors
+        log::info!(
+            "{}: testing {} tests",
+            test_actor.name(),
+            test_actor.abi().methods().len()
+        );
+
+        // Validate actor bin.
+        if let Err(err) = validate_wasm_bin(test_actor.code()) {
+            return Err(Error::Tester {
+                msg: format!("Non valid test actor wasm file: {}", test_actor.name),
+                source: Some(err.into()),
+            });
+        }
+
+        // Deploy test actor
+        let test_address = match self
+            .state_tree
+            .deploy_actor_from_bin(test_actor, TokenAmount::zero())
+        {
+            // Properly deployed, get address
+            Ok(test_address) => test_address,
+            // Error on deployment, return error as part of [`TestResults`]
+            Err(err) => return Err(err),
         };
 
         // Instantiate executor.
@@ -221,27 +295,47 @@ impl Tester {
             target_id.clone(),
         );
 
+        let mut sequence = self.state_tree.actor_sequence(self.account.0)?;
+
         // Run the constructor if it exists.
-        if let Some(constructor) = target.actor.abi().constructor() {
-            match executor.execute_method(
-                target.address,
-                constructor.number(),
-                self.next_sequence(),
-            ) {
+        if let Some(constructor) = test_actor.abi().constructor() {
+            match executor.execute_method(test_address, constructor.number(), sequence) {
                 Ok(apply_ret) => {
                     if apply_ret.msg_receipt.exit_code != ExitCode::OK {
                         let source = apply_ret.failure_info.map(|f| f.to_string().into());
                         return Err(Error::Constructor {
-                            name: target.actor.name().to_string(),
+                            name: test_actor.name().to_string(),
                             source,
                         });
                     }
                 }
                 Err(err) => {
                     return Err(Error::Constructor {
-                        name: target.actor.name().to_string(),
+                        name: test_actor.name().to_string(),
                         source: Some(err.into()),
-                    });
+                    })
+                }
+            }
+            sequence += 1;
+        }
+
+        // Run Setup if it exists.
+        if let Some(set_up) = test_actor.abi().set_up() {
+            match executor.execute_method(test_address, set_up.number(), sequence) {
+                Ok(apply_ret) => {
+                    if apply_ret.msg_receipt.exit_code != ExitCode::OK {
+                        let source = apply_ret.failure_info.map(|f| f.to_string().into());
+                        return Err(Error::Setup {
+                            name: test_actor.name().to_string(),
+                            source,
+                        });
+                    }
+                }
+                Err(err) => {
+                    return Err(Error::Setup {
+                        name: test_actor.name().to_string(),
+                        source: Some(err.into()),
+                    })
                 }
             }
         }
@@ -250,72 +344,23 @@ impl Tester {
         let (root, blockstore) = executor.into_store();
         self.state_tree.override_inner(blockstore, root).unwrap();
 
-        log::info!("    Testing {} test files\n", test_actors.len());
-        // Iterate over all test actors
-        Ok(test_actors
+        // Increment the sequence for the methods tests.
+        let sequence = self.state_tree.actor_sequence(self.account.0)?;
+
+        // TODO concurrent testing
+        // We'll be able to use thread to do concurrent testing once we set the Engine Pool with more than
+        // one possible concurrent engine.
+        // The following steps will not end up in a result. Either we could finalize message
+        // handling and we return the related ApplyRet or we return nothing.
+        Ok(test_actor
+            .abi
+            .methods
             .iter()
-            .map(|test_actor| {
-                log::info!(
-                    "{}: testing {} tests",
-                    test_actor.name(),
-                    test_actor.abi().methods().len()
-                );
-                // Validate actor bin
-                match validate_wasm_bin(test_actor.code()) {
-                    Err(err) => {
-                        // First we notify our stream that the test actor setup failed.
-                        if let Some(ref sender) = stream_results {
-                            if let Err(err) = sender.send((
-                                test_actor.clone(),
-                                Err(Error::Tester {
-                                    msg: format!(
-                                        "Non valid test actor wasm file: {}",
-                                        test_actor.name
-                                    ),
-                                    source: Some(err.clone().into()),
-                                }),
-                            )) {
-                                log::error!("Could not Stream the Result: {err}");
-                            }
-                        }
-                        // Then return to move on to the next test file.
-                        return TestActorResults {
-                            test_actor,
-                            results: Err(Error::Tester {
-                                msg: format!("Non valid test actor wasm file: {}", test_actor.name),
-                                source: Some(err.into()),
-                            }),
-                        };
-                    }
-                    _ => {}
-                }
-
-                // Deploy test actor
-                let test_address = match self
-                    .state_tree
-                    .deploy_actor_from_bin(test_actor, TokenAmount::zero())
-                {
-                    // Properly deployed, get address
-                    Ok(test_address) => test_address,
-                    // Error on deployment, return error as part of [`TestResults`]
-                    Err(err) => {
-                        // First we notify our stream that the test actor setup failed.
-                        if let Some(ref sender) = stream_results {
-                            if let Err(err) = sender.send((test_actor.clone(), Err(err.into()))) {
-                                log::error!("Could not Stream the Result: {err}");
-                            }
-                        }
-                        // Then return to move on to the next test file.
-                        return TestActorResults {
-                            test_actor,
-                            results: Err(err.into()),
-                        };
-                    }
-                };
-
-                // Instantiate executor.
+            .map(|method| {
                 let root = self.state_tree.flush();
                 let blockstore = self.state_tree.store().clone();
+                // TODO is it possible to impl `Clone` for `DefaultExecutor`
+                // and submit PR upstream to implement with it?
                 let mut executor = KytheraExecutor::new(
                     blockstore,
                     root,
@@ -324,196 +369,41 @@ impl Tester {
                     target_id.clone(),
                 );
 
-                // Run the constructor if it exists.
-                if let Some(constructor) = test_actor.abi().constructor() {
-                    match executor.execute_method(
-                        test_address,
-                        constructor.number(),
-                        self.next_sequence(),
-                    ) {
-                        Ok(apply_ret) => {
-                            if apply_ret.msg_receipt.exit_code != ExitCode::OK {
-                                let source = apply_ret.failure_info.map(|f| f.to_string());
-                                // First we notify our stream that the setup failed.
-                                if let Some(ref sender) = stream_results {
-                                    if let Err(err) = sender.send((
-                                        test_actor.clone(),
-                                        Err(Error::Constructor {
-                                            name: test_actor.name().to_string(),
-                                            source: source.clone().map(|f| f.into()),
-                                        }),
-                                    )) {
-                                        log::error!("Could not Stream the Result: {err}");
-                                    }
-                                }
-                                // Then return to move on to the next test file.
-                                return TestActorResults {
-                                    test_actor,
-                                    results: Err(Error::Constructor {
-                                        name: test_actor.name().to_string(),
-                                        source: source.map(|f| f.into()),
-                                    }),
-                                };
+                log::debug!(
+                    "Testing test {}.{}() for Actor {}",
+                    test_actor.name,
+                    method.name(),
+                    target.actor.name
+                );
+                let message = executor.execute_method(test_address, method.number(), sequence);
+
+                let ret = match message {
+                    Ok(apply_ret) => match (method.r#type(), apply_ret.msg_receipt.exit_code) {
+                        (MethodType::Test, ExitCode::OK) => TestResultType::Passed(apply_ret),
+                        (MethodType::TestFail, exit_code) => {
+                            if exit_code == ExitCode::OK {
+                                TestResultType::Failed(apply_ret)
+                            } else {
+                                TestResultType::Passed(apply_ret)
                             }
                         }
-                        Err(err) => {
-                            // First we notify our stream that the setup failed.
-                            if let Some(ref sender) = stream_results {
-                                if let Err(err) = sender.send((
-                                    test_actor.clone(),
-                                    Err(Error::Constructor {
-                                        name: test_actor.name().to_string(),
-                                        source: Some(err.into()),
-                                    }),
-                                )) {
-                                    log::error!("Could not Stream the Result: {err}");
-                                }
-                            }
-                            // Then return to move on to the next test file.
-                            return TestActorResults {
-                                test_actor,
-                                results: Err(Error::Constructor {
-                                    name: test_actor.name().to_string(),
-                                    source: Some(err.into()),
-                                }),
-                            };
-                        }
+                        _ => TestResultType::Failed(apply_ret),
+                    },
+                    Err(err) => TestResultType::Erred(err.to_string()),
+                };
+
+                let result = TestResult {
+                    method: method.clone(),
+                    ret,
+                };
+                if let Some(ref sender) = stream_results {
+                    if let Err(err) = sender.send((test_actor.clone(), result.clone())) {
+                        log::error!("Could not Stream the Result: {err}");
                     }
                 }
-
-                // Run Setup if it exists.
-                if let Some(set_up) = test_actor.abi().set_up() {
-                    match executor.execute_method(
-                        test_address,
-                        set_up.number(),
-                        self.next_sequence(),
-                    ) {
-                        Ok(apply_ret) => {
-                            if apply_ret.msg_receipt.exit_code != ExitCode::OK {
-                                let source = apply_ret.failure_info.map(|f| f.to_string());
-                                // First we notify our stream that the setup failed.
-                                if let Some(ref sender) = stream_results {
-                                    if let Err(err) = sender.send((
-                                        test_actor.clone(),
-                                        Err(Error::Setup {
-                                            name: test_actor.name().to_string(),
-                                            source: source.clone().map(|f| f.into()),
-                                        }),
-                                    )) {
-                                        log::error!("Could not Stream the Result: {err}");
-                                    }
-                                }
-                                // Then return to move on to the next test file.
-                                return TestActorResults {
-                                    test_actor,
-                                    results: Err(Error::Setup {
-                                        name: test_actor.name().to_string(),
-                                        source: source.map(|f| f.into()),
-                                    }),
-                                };
-                            }
-                        }
-                        Err(err) => {
-                            // First we notify our stream that the setup failed.
-                            if let Some(ref sender) = stream_results {
-                                if let Err(err) = sender.send((
-                                    test_actor.clone(),
-                                    Err(Error::Setup {
-                                        name: test_actor.name().to_string(),
-                                        source: Some(err.into()),
-                                    }),
-                                )) {
-                                    log::error!("Could not Stream the Result: {err}");
-                                }
-                            }
-                            // Then return to move on to the next test file.
-                            return TestActorResults {
-                                test_actor,
-                                results: Err(Error::Setup {
-                                    name: test_actor.name().to_string(),
-                                    source: Some(err.into()),
-                                }),
-                            };
-                        }
-                    }
-                }
-
-                // Update owned state tree
-                let (root, blockstore) = executor.into_store();
-                self.state_tree.override_inner(blockstore, root).unwrap();
-
-                // Increment the sequence for the methods tests.
-                let sequence = self.next_sequence();
-
-                // TODO concurrent testing
-                // We'll be able to use thread to do concurrent testing once we set the Engine Pool with more than
-                // one possible concurrent engine.
-                // The following steps will not end up in a result. Either we could finalize message
-                // handling and we return the related ApplyRet or we return nothing.
-                TestActorResults {
-                    test_actor,
-                    results: Ok(test_actor
-                        .abi
-                        .methods
-                        .iter()
-                        .map(|method| {
-                            let root = self.state_tree.flush();
-                            let blockstore = self.state_tree.store().clone();
-                            // TODO is it possible to impl `Clone` for `DefaultExecutor`
-                            // and submit PR upstream to implement with it?
-                            let mut executor = KytheraExecutor::new(
-                                blockstore,
-                                root,
-                                self.builtin_actors.root,
-                                self.account.1,
-                                target_id.clone(),
-                            );
-
-                            log::debug!(
-                                "Testing test {}.{}() for Actor {}",
-                                test_actor.name,
-                                method.name(),
-                                target.actor.name
-                            );
-                            let message =
-                                executor.execute_method(test_address, method.number(), sequence);
-
-                            let ret = match message {
-                                Ok(apply_ret) => {
-                                    match (method.r#type(), apply_ret.msg_receipt.exit_code) {
-                                        (MethodType::Test, ExitCode::OK) => {
-                                            TestResultType::Passed(apply_ret)
-                                        }
-                                        (MethodType::TestFail, exit_code) => {
-                                            if exit_code == ExitCode::OK {
-                                                TestResultType::Failed(apply_ret)
-                                            } else {
-                                                TestResultType::Passed(apply_ret)
-                                            }
-                                        }
-                                        _ => TestResultType::Failed(apply_ret),
-                                    }
-                                }
-                                Err(err) => TestResultType::Erred(err.to_string()),
-                            };
-
-                            let result = TestResult {
-                                method: method.clone(),
-                                ret,
-                            };
-                            if let Some(ref sender) = stream_results {
-                                if let Err(err) =
-                                    sender.send((test_actor.clone(), Ok(result.clone())))
-                                {
-                                    log::error!("Could not Stream the Result: {err}");
-                                }
-                            }
-                            result
-                        })
-                        .collect()),
-                }
+                result
             })
-            .collect())
+            .collect::<Vec<TestResult>>())
     }
 }
 

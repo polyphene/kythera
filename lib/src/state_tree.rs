@@ -54,6 +54,15 @@ impl StateTree {
         Self { inner }
     }
 
+    pub fn actor_sequence(&self, actor_id: ActorID) -> Result<u64, Error> {
+        match self.inner.get_actor(actor_id).unwrap() {
+            Some(act) => Ok(act.sequence),
+            None => Err(Error::MissingActor {
+                msg: format!("Missing actor in state tree: {actor_id}"),
+            }),
+        }
+    }
+
     pub fn flush(&mut self) -> cid::CidGeneric<64> {
         self.inner
             .flush()

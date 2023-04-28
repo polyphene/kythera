@@ -202,17 +202,70 @@ fn outputs_single_error_target_file() {
             ),
         ],
     );
-    let mut cmd = Command::cargo_bin("kythera").unwrap();
+
     let mut cmd = Command::cargo_bin("kythera").unwrap();
     cmd.args(["test", &dir.path().to_str().unwrap()])
-        .assert().failure()
-        .stderr(contains(
+        .assert().success()
+        .stdout(contains("  Running Tests for Actor : Target.wasm"))
+        .stdout(contains(
             "Error: Constructor execution failed for actor: Target.wasm",
         ))
-        .stderr(contains("Caused by:"))
-        .stderr(contains("message failed with backtrace:"))
-        .stderr(contains("00: f0103 (method 1) -- fatal error (10)"))
-        .stderr(contains("caused by: [FATAL] Error: [from=f1d3nehuc4u3l5mn7hazppnogf3oe6l6ymaicbkhi, to=f0103, seq=0, m=1, h=0]: actor has no memory export"));
+        .stdout(contains("Caused by: message failed with backtrace:"))
+        .stdout(contains("00: f0103 (method 1) -- fatal error (10)"))
+        .stdout(contains("caused by: [FATAL] Error: [from=f1d3nehuc4u3l5mn7hazppnogf3oe6l6ymaicbkhi, to=f0103, seq=0, m=1, h=0]: actor has no memory export"));
+}
+
+#[test]
+fn outputs_single_error_test_file() {
+    let dir = tempdir().unwrap();
+
+    create_target_and_test_actors(
+        &dir,
+        &[
+            Vec::from(BASIC_TARGET_ACTOR_BINARY),
+            wat::parse_str(NO_MEMORY_WAT).unwrap(),
+        ],
+        &[
+            (
+                "Target",
+                Abi {
+                    constructor: Some(Method::new_from_name("Constructor").unwrap()),
+                    set_up: None,
+                    methods: vec![
+                        Method::new_from_name("HelloWorld").unwrap(),
+                        Method::new_from_name("Caller").unwrap(),
+                        Method::new_from_name("Origin").unwrap(),
+                    ],
+                },
+            ),
+            (
+                "Target.t",
+                Abi {
+                    constructor: Some(Method::new_from_name("Constructor").unwrap()),
+                    set_up: Some(Method::new_from_name("Setup").unwrap()),
+                    methods: vec![
+                        Method::new_from_name("TestConstructorSetup").unwrap(),
+                        Method::new_from_name("TestFailSuccess").unwrap(),
+                    ],
+                },
+            ),
+        ],
+    );
+
+    let mut cmd = Command::cargo_bin("kythera").unwrap();
+    cmd.args(["test", &dir.path().to_str().unwrap()])
+        .assert().success()
+        .stdout(contains("  Running Tests for Actor : Target.wasm"))
+        .stdout(contains("    Testing 1 test files"))
+        .stdout(contains("Target.t.wasm: testing 2 tests"))
+        .stdout(contains("Error: Constructor execution failed for actor: Target.t.wasm"))
+        .stdout(contains(
+            "Error: Constructor execution failed for actor: Target.t.wasm",
+        ))
+        .stdout(contains("test result: FAILED. 0 passed; 0 failed"))
+        .stdout(contains("Caused by: message failed with backtrace:"))
+        .stdout(contains("00: f0104 (method 1) -- fatal error (10)"))
+        .stdout(contains("caused by: [FATAL] Error: [from=f1d3nehuc4u3l5mn7hazppnogf3oe6l6ymaicbkhi, to=f0104, seq=1, m=1, h=0]: actor has no memory export"));
 }
 
 #[test]

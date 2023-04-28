@@ -51,6 +51,3 @@ wasmparser = "0.103.0"
 [dev-dependencies.kythera-actors]
 path = "../actors"
 features = ["testing"]
-
-[dev-dependencies]
-wat = "1.0.51"

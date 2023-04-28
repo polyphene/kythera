@@ -31,44 +31,52 @@ pub(crate) struct TestArgs {
 
 /// Kythera cli test command.
 pub(crate) fn test(args: &TestArgs) -> anyhow::Result<()> {
-    let tests = search_files(&args.path)?;
-    for test in tests {
-        // Create two channels, one for streaming the result,
-        // and another for synchronization when the streaming is over.
-        let (sync_tx, sync_rx) = sync_channel(1);
-        let (stream_tx, stream_rx) = channel();
-
-        log::info!("  Running Tests for Actor : {}", test.actor.name());
+    let test_targets = search_files(&args.path)?;
+    // Iterate through target actors.
+    for test_target in test_targets {
+        log::info!("  Running Tests for Actor : {}", test_target.actor.name());
         let mut tester = Tester::new();
-        match tester.deploy_target_actor(test.actor) {
-            Err(err) => {
-                log::error!("\nError: {}", err);
-                match err.source() {
-                    Some(source) => log::error!("Caused by: {}", source),
-                    _ => {}
-                };
-                sync_rx
-                    .recv()
-                    .expect("Should be able to sync the end of streaming results");
-                continue;
+        if let Err(err) = tester.deploy_target_actor(test_target.actor) {
+            log::error!("\nError: {}", err);
+            if let Some(source) = err.source() {
+                log::error!("Caused by: {}", source)
             }
-            _ => {}
+            continue;
         };
-        let verbosity = args.verbosity;
-        thread::spawn(move || stream_results(stream_rx, sync_tx, verbosity));
-        match tester.test(&test.tests, Some(stream_tx)) {
-            Err(err) => {
+
+        let populated_tests = test_target
+            .tests
+            .iter()
+            .filter(|test| {
+                test.abi().methods().iter().any(|method| {
+                    matches!(method.r#type(), MethodType::Test | MethodType::TestFail)
+                })
+            })
+            .collect::<Vec<&WasmActor>>();
+
+        log::info!("    Testing {} test files\n", populated_tests.len());
+
+        // Iterate through test actors.
+        for test in populated_tests {
+            // Create two channels, one for streaming the result,
+            // and another for synchronization when the streaming is over.
+            let (sync_tx, sync_rx) = sync_channel(1);
+            let (stream_tx, stream_rx) = channel();
+
+            let verbosity = args.verbosity;
+            thread::spawn(move || stream_results(stream_rx, sync_tx, verbosity));
+
+            if let Err(err) = tester.test(test, Some(stream_tx)) {
                 log::error!("\nError: {}", err);
-                match err.source() {
-                    Some(source) => log::error!("Caused by: {}", source),
-                    _ => {}
-                };
-            }
-            _ => {}
-        };
-        sync_rx
-            .recv()
-            .expect("Should be able to sync the end of streaming results");
+                if let Some(source) = err.source() {
+                    log::error!("Caused by: {}", source)
+                }
+            };
+
+            sync_rx
+                .recv()
+                .expect("Should be able to sync the end of streaming results");
+        }
     }
     Ok(())
 }
@@ -76,49 +84,38 @@ pub(crate) fn test(args: &TestArgs) -> anyhow::Result<()> {
 /// Stream the results received from `Tester::test, so that users see the result of each test as
 /// soon as it finishes.
 fn stream_results(
-    stream: Receiver<(WasmActor, Result<TestResult, kythera_lib::error::Error>)>,
+    stream: Receiver<(WasmActor, TestResult)>,
     sync_tx: SyncSender<()>,
     verbosity: u8,
 ) {
     let mut tests_failed = vec![];
     let mut tests_passed = vec![];
-    let mut result = "ok".green();
-    for (_actor, res) in stream {
-        match res {
-            // This match branch means that we tried to handle the test method.
-            Ok(test_result) => {
-                log::info!("{test_result}");
-                match test_result.ret() {
-                    TestResultType::Passed(apply_ret) | TestResultType::Failed(apply_ret) => {
-                        log::info!("(gas consumption: {})", apply_ret.msg_receipt.gas_used);
-                        if verbosity >= 2 {
-                            print_verbose_traces(apply_ret);
-                        }
-                        if test_result.passed() {
-                            tests_passed.push(test_result);
-                        } else {
-                            tests_failed.push(test_result);
-                        }
-                    }
-                    TestResultType::Erred(_) => {
-                        tests_failed.push(test_result);
-                    }
+    // Default failed will be shown for test actors that returned errors on setup.
+    let mut result = "FAILED".bright_red();
+    for (_actor, test_result) in stream {
+        log::info!("{test_result}");
+        match test_result.ret() {
+            TestResultType::Passed(apply_ret) | TestResultType::Failed(apply_ret) => {
+                log::info!("(gas consumption: {})", apply_ret.msg_receipt.gas_used);
+                if verbosity >= 2 {
+                    print_verbose_traces(apply_ret);
+                }
+                if test_result.passed() {
+                    tests_passed.push(test_result);
+                } else {
+                    tests_failed.push(test_result);
                 }
             }
-            // This match branch means that there was a problem when setting up the test actor.
-            Err(err) => {
-                result = "FAILED".bright_red();
-                log::error!("\nError: {}", err);
-                match err.source() {
-                    Some(source) => log::error!("Caused by: {}", source),
-                    _ => {}
-                };
-                log::info!("test result: {result}. 0 passed; 0 failed\n");
-                sync_tx
-                    .send(())
-                    .expect("Should be able to sync finish streaming results");
+            TestResultType::Erred(_) => {
+                tests_failed.push(test_result);
             }
         }
+    }
+
+    // Optimist mindset that if we got returned values and some of them are passing then all
+    // are passing.
+    if !tests_passed.is_empty() {
+        result = "ok".green();
     }
 
     // After each and every test result has been printed,
@@ -147,8 +144,9 @@ fn stream_results(
             }
         }
     }
+
     log::info!(
-        "test result: {result}. {} passed; {} failed\n",
+        "\ntest result: {result}. {} passed; {} failed\n",
         tests_passed.len(),
         tests_failed.len()
     );

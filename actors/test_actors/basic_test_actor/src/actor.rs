@@ -202,7 +202,9 @@ fn TestFailed() {
 // Expected test to fail actually succeed.
 #[allow(non_snake_case)]
 fn TestFailFailed() {
-    assert_eq!(1 + 2, 3);
+    let a = 1;
+    let b = a * 2;
+    assert_eq!(a + b, 3);
 }
 
 // Expected test to fail actually succeed.

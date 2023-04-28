@@ -17,8 +17,8 @@ pub enum Error {
         #[source]
         source: Option<Box<dyn std::error::Error + Sync + Send>>,
     },
-    #[error("Main Actor not loaded")]
-    MissingActor,
+    #[error("{msg}")]
+    MissingActor { msg: String },
     #[error("Could not set Actor: {name} on the BlockStore")]
     SettingActor {
         name: String,

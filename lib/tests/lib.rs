@@ -8,15 +8,6 @@ use kythera_common::abi::{Abi, Method, MethodType};
 use kythera_fvm::executor::ApplyFailure::MessageBacktrace;
 use kythera_lib::{TestResultType, Tester, WasmActor};
 
-const TARGET_WAT: &str = r#"
-        ;; Mock invoke function
-            (module
-                (func (export "invoke") (param $x i32) (result i32)
-                    (i32.const 1)
-                )
-            )
-        "#;
-
 fn set_target_actor(tester: &mut Tester, name: String, binary: Vec<u8>, abi: Abi) {
     let target_actor = WasmActor::new(name, binary, abi);
 
@@ -58,7 +49,7 @@ fn test_deploy_non_valid_test_actor() {
     set_target_actor(
         &mut tester,
         String::from("Target.wasm"),
-        wat::parse_str(TARGET_WAT).unwrap(),
+        Vec::from(BASIC_TARGET_ACTOR_BINARY),
         Abi {
             constructor: None,
             set_up: None,
@@ -76,19 +67,14 @@ fn test_deploy_non_valid_test_actor() {
     let test_actor = WasmActor::new(String::from("Target.t.wasm"), test_wasm_bin, test_abi);
 
     // Run test
-    match tester.test(&[test_actor.clone()], None) {
-        Err(_) => {
-            panic!("Test should return Ok on non valid test actor");
-        }
-        Ok(results) => {
-            assert_eq!(results.len(), 1);
-            assert!(results[0]
-                .results
-                .as_ref()
-                .err()
-                .unwrap()
+    match tester.test(&test_actor.clone(), None) {
+        Err(err) => {
+            assert!(err
                 .to_string()
                 .contains("Non valid test actor wasm file: Target.t.wasm"));
+        }
+        Ok(_) => {
+            panic!("Test should return Ok on non valid test actor");
         }
     }
 }
@@ -98,9 +84,7 @@ fn test_failing_target_actor_constructor() {
     // Instantiate tester
     let mut tester = Tester::new();
 
-    // Set target actor
-    set_target_actor(
-        &mut tester,
+    let target_actor = WasmActor::new(
         String::from("Target.wasm"),
         Vec::from(FAIL_TEST_ACTOR_BINARY),
         Abi {
@@ -110,26 +94,13 @@ fn test_failing_target_actor_constructor() {
         },
     );
 
-    // Set test actor
-    let test_wasm_bin: Vec<u8> = Vec::from(BUILTINS_TEST_ACTOR_BINARY);
-    let test_abi = Abi {
-        constructor: None,
-        set_up: None,
-        methods: vec![Method::new_from_name("TestBuiltinsDeployed").unwrap()],
-    };
-    let test_actor = WasmActor::new(String::from("Target.t.wasm"), test_wasm_bin, test_abi);
-
-    // Run test
-    match tester.test(&[test_actor.clone()], None) {
-        Err(err) => {
-            assert!(err
-                .to_string()
-                .contains("Constructor execution failed for actor: Target.wasm"));
-        }
-        Ok(_) => {
-            panic!("Test should return error on non constructor for target actor");
-        }
-    }
+    let res = tester.deploy_target_actor(target_actor);
+    assert!(res
+        .err()
+        .as_ref()
+        .unwrap()
+        .to_string()
+        .contains("Constructor execution failed for actor: Target.wasm"));
 }
 
 #[test]
@@ -141,7 +112,7 @@ fn test_failing_test_actor_constructor_setup() {
     set_target_actor(
         &mut tester,
         String::from("Target.wasm"),
-        wat::parse_str(TARGET_WAT).unwrap(),
+        Vec::from(BASIC_TARGET_ACTOR_BINARY),
         Abi {
             constructor: None,
             set_up: None,
@@ -169,29 +140,22 @@ fn test_failing_test_actor_constructor_setup() {
     let setup_test_actor = WasmActor::new(String::from("Setup.t.wasm"), test_wasm_bin, test_abi);
 
     // Run test
-    match tester.test(
-        &[constructor_test_actor.clone(), setup_test_actor.clone()],
-        None,
-    ) {
-        Err(_) => {
-            panic!("Test should return error on non constructor for target actor");
-        }
-        Ok(results) => {
-            assert_eq!(results.len(), 2);
-            assert!(results[0]
-                .results
-                .as_ref()
-                .err()
-                .unwrap()
-                .to_string()
-                .contains("Constructor execution failed for actor: Constructor.t.wasm"));
-            assert!(results[1]
-                .results
-                .as_ref()
-                .err()
-                .unwrap()
-                .to_string()
-                .contains("Setup execution failed for actor: Setup.t.wasm"));
+    for test_actor in &[constructor_test_actor.clone(), setup_test_actor.clone()] {
+        match tester.test(&test_actor, None) {
+            Err(err) => {
+                if test_actor.name().contains("Constructor") {
+                    assert!(err
+                        .to_string()
+                        .contains("Constructor execution failed for actor: Constructor.t.wasm"));
+                } else {
+                    assert!(err
+                        .to_string()
+                        .contains("Setup execution failed for actor: Setup.t.wasm"));
+                }
+            }
+            Ok(_) => {
+                panic!("Test should return error on non constructor for target actor");
+            }
         }
     }
 }
@@ -205,7 +169,7 @@ fn test_builtin_deployed() {
     set_target_actor(
         &mut tester,
         String::from("Target.wasm"),
-        wat::parse_str(TARGET_WAT).unwrap(),
+        Vec::from(BASIC_TARGET_ACTOR_BINARY),
         Abi {
             constructor: None,
             set_up: None,
@@ -223,19 +187,14 @@ fn test_builtin_deployed() {
     let test_actor = WasmActor::new(String::from("Target.t.wasm"), test_wasm_bin, test_abi);
 
     // Run test
-    match tester.test(&[test_actor.clone()], None) {
+    match tester.test(&test_actor.clone(), None) {
         Err(_) => {
-            panic!("Could not run test when testing Tester")
+            panic!("Could not run test when testing Tester for builtins")
         }
         Ok(test_res) => {
             assert_eq!(test_res.len(), 1usize);
-            assert_eq!(test_res[0].results.as_ref().unwrap().len(), 1usize);
-            assert_eq!(test_res[0].test_actor, &test_actor);
 
-            test_res[0]
-                .results
-                .as_ref()
-                .unwrap()
+            test_res
                 .iter()
                 .for_each(|result| match (result.method().r#type(), result.ret()) {
                     (MethodType::Test, TestResultType::Passed(apply_ret)) => {
@@ -283,18 +242,13 @@ fn test_tester_flow() {
     };
     let test_actor = WasmActor::new(String::from("Target.t.wasm"), test_wasm_bin, test_abi);
 
-    match tester.test(&[test_actor.clone()], None) {
+    match tester.test(&test_actor.clone(), None) {
         Err(_) => {
-            panic!("Could not run test when testing Tester")
+            panic!("Could not run test when testing Tester flow")
         }
         Ok(test_res) => {
-            assert_eq!(test_res.len(), 1);
-            assert_eq!(test_res[0].results.as_ref().unwrap().len(), 5);
-            assert_eq!(test_res[0].test_actor, &test_actor);
-            test_res[0]
-                .results
-                .as_ref()
-                .unwrap()
+            assert_eq!(test_res.len(), 5);
+            test_res
                 .iter()
                 .for_each(|result| match result.method().name() {
                     "TestConstructorSetup" => match &result.ret() {
@@ -412,14 +366,11 @@ fn test_cheatcodes() {
     };
     let test_actor = WasmActor::new(String::from("Target.t.wasm"), test_wasm_bin, test_abi);
 
-    match tester.test(&[test_actor.clone()], None) {
+    match tester.test(&test_actor.clone(), None) {
         Err(_) => {
             panic!("Could not run test when testing Tester")
         }
-        Ok(test_res) => test_res[0]
-            .results
-            .as_ref()
-            .unwrap()
+        Ok(test_res) => test_res
             .iter()
             .for_each(|result| match (result.method().r#type(), result.ret()) {
                 (MethodType::TestFail, TestResultType::Passed(apply_ret)) => {
