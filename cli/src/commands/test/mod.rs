@@ -32,7 +32,7 @@ pub(crate) struct TestArgs {
 /// Kythera cli test command.
 pub(crate) fn test(args: &TestArgs) -> anyhow::Result<()> {
     let test_targets = search_files(&args.path)?;
-    // Iterate through target actors.
+    // Iterate through target actors and respective tests.
     for test_target in test_targets {
         log::info!("  Running Tests for Actor : {}", test_target.actor.name());
         let mut tester = Tester::new();
