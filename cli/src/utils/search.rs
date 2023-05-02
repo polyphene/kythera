@@ -55,8 +55,8 @@ fn set_abi_extension<P: AsRef<Path>>(path: P) -> anyhow::Result<String> {
 /// Read a WebAssembly actor from a binary and an Abi.
 fn read_actor<P: AsRef<Path>>(binary_path: P) -> anyhow::Result<WasmActor> {
     let abi_path = set_abi_extension(&binary_path)?;
-
     let (file_name, bytecode) = read_file_data(binary_path)?;
+
     let abi: Abi = kythera_lib::from_slice(&read_file_data(abi_path)?.1)?;
 
     Ok(WasmActor::new(file_name, bytecode, abi))

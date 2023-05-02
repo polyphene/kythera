@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0, MIT
 
 pub use fvm::{account_actor, init_actor, system_actor};
-use fvm_shared::address::Address;
+pub use fvm_shared::address::{Address, Payload};
 use fvm_shared::ActorID;
 
 pub mod engine {

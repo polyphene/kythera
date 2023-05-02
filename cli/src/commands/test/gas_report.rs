@@ -6,27 +6,38 @@ use std::collections::BTreeMap;
 use comfy_table::{
     modifiers::UTF8_ROUND_CORNERS, presets::UTF8_FULL, Attribute, Cell, Color, Table,
 };
-use kythera_lib::{ExecutionEvent, Method, TestResult, TestResultType, WasmActor};
+use kythera_lib::{DeployedActor, ExecutionEvent, Method, Payload, TestResult, TestResultType};
 
 /// Gas report for the tested contracts.
 #[derive(Default, Debug)]
-pub struct GasReport<'a> {
-    reports: BTreeMap<&'a WasmActor, ActorInfo<'a>>,
+pub struct GasReport {
+    reports: BTreeMap<DeployedActor, ActorInfo>,
 }
 
 #[derive(Debug, Default)]
 /// Actor method calls information
 /// TODO: calculate actor deployment gas consumption.
-pub struct ActorInfo<'a> {
-    methods: BTreeMap<&'a Method, Vec<u64>>,
+pub struct ActorInfo {
+    methods: BTreeMap<Method, Vec<u64>>,
 }
 
-impl<'a> GasReport<'a> {
+/// A Method and its gas cost.
+struct MethodCost {
+    gas_cost: u64,
+    num: u64,
+    from: u64,
+}
+
+impl GasReport {
     /// Analyze a set of [`TestResult`]s for a target Actor.
-    pub fn analyze(&mut self, actor: &'a WasmActor, test_results: &[&TestResult]) {
-        let mut info = match self.reports.remove(actor) {
+    pub fn analyze(&mut self, actor: DeployedActor, test_results: &[TestResult]) {
+        let mut info = match self.reports.remove(&actor) {
             Some(info) => info,
             None => ActorInfo::default(),
+        };
+        let actor_id = match actor.address().payload() {
+            Payload::ID(id) => id,
+            _ => panic!("DeployedActor payload Should be an Id"),
         };
 
         for result in test_results {
@@ -38,37 +49,41 @@ impl<'a> GasReport<'a> {
             };
 
             // Get the Gas consumption by each Call of the Target actor.
-            let mut stack = vec![];
+            let mut stack: Vec<MethodCost> = vec![];
             for trace in &apply_ret.exec_trace {
                 match trace {
                     ExecutionEvent::GasCharge(gas_charge) => {
-                        // Add this gas charge to the total gas charge by the main method.
+                        // Add this gas charge to the total gas charge of the current method.
                         // There is a `GasCharge` before any `Call` so we skip it.
-                        let (_method, total_gas_charge) = match stack.get_mut(0) {
+                        let method = match stack.last_mut() {
                             Some(e) => e,
                             None => continue,
                         };
-                        *total_gas_charge =
-                            *total_gas_charge + gas_charge.compute_gas.as_milligas();
+                        method.gas_cost += gas_charge.compute_gas.as_milligas();
                     }
 
-                    ExecutionEvent::Call { method, .. } => {
-                        stack.push((method, 0));
+                    ExecutionEvent::Call { method, from, .. } => {
+                        stack.push(MethodCost {
+                            gas_cost: 0,
+                            num: *method,
+                            from: *from,
+                        });
                     }
                     ExecutionEvent::CallReturn(_, _) | ExecutionEvent::CallError(_) => {
-                        let (method_num, total_gas_charge) =
-                            stack.pop().expect("A call return should match a Call");
+                        let method_return = stack.pop().expect("A CallReturn should match a Call");
                         // If stack is empty we reached the main Method call.
-                        if !stack.is_empty() {
-                            continue;
+                        // If the stack is not empty we keep summing the gas totals.
+                        if let Some(previous) = stack.last_mut() {
+                            previous.gas_cost += method_return.gas_cost;
                         }
+
                         // If the method called was from the target actor,
                         // we create a new call on `GasInfo` with the totals of gas charge.
                         let Some(method) = actor
                                 .abi()
                                 .methods()
                                 .iter()
-                                .find(|a| a.number() == *method_num) else {
+                                .find(|a| a.number() == method_return.num && method_return.from == *actor_id) else {
                             continue;
                         };
 
@@ -76,8 +91,8 @@ impl<'a> GasReport<'a> {
                             Some(gi) => gi,
                             None => vec![],
                         };
-                        gas_info.push(total_gas_charge);
-                        info.methods.insert(method, gas_info);
+                        gas_info.push(method_return.gas_cost);
+                        info.methods.insert(method.clone(), gas_info);
                     }
                     _ => {}
                 }

@@ -153,7 +153,7 @@ pub struct Method {
 
 impl fmt::Display for Method {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "{} - {}", self.number(), self.name())
+        write!(f, "{}", self.name())
     }
 }
 

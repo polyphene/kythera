@@ -1,13 +1,52 @@
 // Copyright 2023 Polyphene.
 // SPDX-License-Identifier: Apache-2.0, MIT
 
+use cid::{multihash::Code, Cid};
 use frc42_dispatch::match_method;
+use fvm_ipld_blockstore::Block;
+use fvm_ipld_encoding::tuple::{Deserialize_tuple, Serialize_tuple};
 use fvm_ipld_encoding::DAG_CBOR;
 use fvm_sdk as sdk;
+use fvm_sdk::NO_DATA_BLOCK_ID;
 use fvm_shared::error::ExitCode;
 use sdk::sys::ErrorNumber;
 use serde::ser;
 use thiserror::Error;
+
+/**************************************************
+ * Actor's state
+ **************************************************/
+
+#[derive(Serialize_tuple, Deserialize_tuple)]
+struct ActorState {
+    who_am_i: String,
+}
+
+impl ActorState {
+    pub fn load(cid: &Cid) -> Self {
+        let data = sdk::ipld::get(cid).unwrap();
+        fvm_ipld_encoding::from_slice::<Self>(&data).unwrap()
+    }
+
+    pub fn save(&self) -> Cid {
+        let serialized = fvm_ipld_encoding::to_vec(self).unwrap();
+        let block = Block {
+            codec: DAG_CBOR,
+            data: serialized,
+        };
+        sdk::ipld::put(
+            Code::Blake2b256.into(),
+            32,
+            block.codec,
+            block.data.as_ref(),
+        )
+        .unwrap()
+    }
+}
+
+/**************************************************
+ * IPLD Utils
+ **************************************************/
 
 #[derive(Error, Debug)]
 enum IpldError {
@@ -24,13 +63,19 @@ where
     let bytes = fvm_ipld_encoding::to_vec(value)?;
     Ok(sdk::ipld::put_block(DAG_CBOR, bytes.as_slice())?)
 }
-
 #[no_mangle]
 fn invoke(_input: u32) -> u32 {
     let method_num = fvm_sdk::message::method_number();
     match_method!(
         method_num,
         {
+            "Constructor" => {
+                Constructor();
+                NO_DATA_BLOCK_ID
+            },
+            "HelloWorld" => {
+                HelloWorld()
+            },
             "Caller" => {
                 let mc_caller: u64 = unsafe { fvm_sdk::sys::vm::message_context().unwrap().caller };
 
@@ -49,4 +94,23 @@ fn invoke(_input: u32) -> u32 {
             }
         }
     )
+}
+
+// `Constructor` for the target actor we are using in our tests.
+#[allow(non_snake_case)]
+fn Constructor() {
+    // This value should always be set in the `Constrcutor`. It allows us to test that constructor
+    // for target actors are properly called.
+    let state = ActorState {
+        who_am_i: String::from("Basic Target Actor"),
+    };
+    let cid = state.save();
+    fvm_sdk::sself::set_root(&cid).unwrap();
+}
+
+#[allow(non_snake_case)]
+fn HelloWorld() -> u32 {
+    let state = ActorState::load(&sdk::sself::root().unwrap());
+
+    return_ipld(&state.who_am_i).unwrap()
 }
