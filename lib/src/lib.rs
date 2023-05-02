@@ -21,11 +21,13 @@ use std::sync::mpsc::Sender;
 use fvm_ipld_encoding::RawBytes;
 use fvm_shared::{address::Address, bigint::Zero, econ::TokenAmount, error::ExitCode};
 
+use crate::validator::validate_wasm_bin;
 use error::Error;
 use state_tree::{BuiltInActors, StateTree};
 
-mod error;
+pub mod error;
 mod state_tree;
+mod validator;
 
 /// Main interface to test `Actor`s with Kythera.
 pub struct Tester {
@@ -84,7 +86,7 @@ impl fmt::Display for WasmActor {
 /// An Actor that has been deployed into a `BlockStore`.
 #[derive(Debug, Clone)]
 struct DeployedActor {
-    name: String,
+    actor: WasmActor,
     address: Address,
 }
 
@@ -166,13 +168,64 @@ impl Tester {
 
     /// Deploy the target Actor file into the `StateTree`.
     pub fn deploy_target_actor(&mut self, actor: WasmActor) -> Result<(), Error> {
+        // Validate wasm bin.
+        if let Err(err) = validate_wasm_bin(actor.code()) {
+            return Err(Error::Tester {
+                msg: format!("Non valid target actor wasm file: {}", actor.name()),
+                source: Some(Box::from(err)),
+            });
+        }
+
+        // Set actor bin.
         let address = self
             .state_tree
             .deploy_actor_from_bin(&actor, TokenAmount::zero())?;
-        self.target_actor = Some(DeployedActor {
-            name: actor.name,
-            address,
-        });
+
+        let address_id = match address.id() {
+            Ok(id) => {
+                RawBytes::new(to_vec(&id).expect("Should be able to serialize target actor ID"))
+            }
+            Err(_) => panic!("Actor Id should be valid"),
+        };
+        // Instantiate executor.
+        let root = self.state_tree.flush();
+        let blockstore = self.state_tree.store().clone();
+        let mut executor = KytheraExecutor::new(
+            blockstore,
+            root,
+            self.builtin_actors.root,
+            self.account.1,
+            address_id,
+        );
+
+        // Run the constructor if it exists.
+        if let Some(constructor) = actor.abi().constructor() {
+            let sequence = self.state_tree.actor_sequence(self.account.0)?;
+
+            match executor.execute_method(address, constructor.number(), sequence) {
+                Ok(apply_ret) => {
+                    if apply_ret.msg_receipt.exit_code != ExitCode::OK {
+                        let source = apply_ret.failure_info.map(|f| f.to_string().into());
+                        return Err(Error::Constructor {
+                            name: actor.name().to_string(),
+                            source,
+                        });
+                    }
+                }
+                Err(err) => {
+                    return Err(Error::Constructor {
+                        name: actor.name().to_string(),
+                        source: Some(err.into()),
+                    });
+                }
+            }
+        }
+
+        // Update owned state tree
+        let (root, blockstore) = executor.into_store();
+        self.state_tree.override_inner(blockstore, root).unwrap();
+
+        self.target_actor = Some(DeployedActor { actor, address });
 
         Ok(())
     }
@@ -185,16 +238,19 @@ impl Tester {
     }
 
     /// Test an Actor on a `MemoryBlockstore`.
-    pub fn test<'a>(
+    pub fn test(
         &mut self,
-        test_actors: &'a [WasmActor],
+        test_actor: &WasmActor,
         stream_results: Option<Sender<(WasmActor, TestResult)>>,
-    ) -> Result<Vec<TestActorResults<'a>>, Error> {
+    ) -> Result<Vec<TestResult>, Error> {
+        // Get target actor Id to pass it to test methods.
         let target = self
             .target_actor
             .as_ref()
             .cloned()
-            .ok_or(Error::MissingActor)?;
+            .ok_or(Error::MissingActor {
+                msg: "Main Actor not loaded".to_string(),
+            })?;
 
         let target_id = match target.address.id() {
             Ok(id) => {
@@ -203,157 +259,150 @@ impl Tester {
             Err(_) => panic!("Actor Id should be valid"),
         };
 
-        log::info!("Running Tests for Actor : {}", target.name);
-        log::info!("Testing {} test files", test_actors.len());
         // Iterate over all test actors
-        Ok(test_actors
-            .iter()
-            .map(|test_actor| {
-                // Deploy test actor
-                let test_address = match self
-                    .state_tree
-                    .deploy_actor_from_bin(test_actor, TokenAmount::zero())
-                {
-                    // Properly deployed, get address
-                    Ok(test_address) => test_address,
-                    // Error on deployment, return error as part of [`TestResults`]
-                    Err(err) => {
-                        return TestActorResults {
-                            test_actor,
-                            results: Err(err),
-                        }
-                    }
-                };
+        log::info!(
+            "{}: testing {} tests",
+            test_actor.name(),
+            test_actor.abi().methods().len()
+        );
 
+        // Validate actor bin.
+        if let Err(err) = validate_wasm_bin(test_actor.code()) {
+            return Err(Error::Tester {
+                msg: format!("Non valid test actor wasm file: {}", test_actor.name),
+                source: Some(Box::from(err)),
+            });
+        }
+
+        // Deploy test actor
+        let test_address = match self
+            .state_tree
+            .deploy_actor_from_bin(test_actor, TokenAmount::zero())
+        {
+            // Properly deployed, get address
+            Ok(test_address) => test_address,
+            // Error on deployment, return error as part of [`TestResults`]
+            Err(err) => return Err(err),
+        };
+
+        // Instantiate executor.
+        let root = self.state_tree.flush();
+        let blockstore = self.state_tree.store().clone();
+        let mut executor = KytheraExecutor::new(
+            blockstore,
+            root,
+            self.builtin_actors.root,
+            self.account.1,
+            target_id.clone(),
+        );
+
+        let mut sequence = self.state_tree.actor_sequence(self.account.0)?;
+
+        // Run the constructor if it exists.
+        if let Some(constructor) = test_actor.abi().constructor() {
+            match executor.execute_method(test_address, constructor.number(), sequence) {
+                Ok(apply_ret) => {
+                    if apply_ret.msg_receipt.exit_code != ExitCode::OK {
+                        let source = apply_ret.failure_info.map(|f| f.to_string().into());
+                        return Err(Error::Constructor {
+                            name: test_actor.name().to_string(),
+                            source,
+                        });
+                    }
+                }
+                Err(err) => {
+                    return Err(Error::Constructor {
+                        name: test_actor.name().to_string(),
+                        source: Some(err.into()),
+                    })
+                }
+            }
+            sequence += 1;
+        }
+
+        // Run Setup if it exists.
+        if let Some(set_up) = test_actor.abi().set_up() {
+            match executor.execute_method(test_address, set_up.number(), sequence) {
+                Ok(apply_ret) => {
+                    if apply_ret.msg_receipt.exit_code != ExitCode::OK {
+                        let source = apply_ret.failure_info.map(|f| f.to_string().into());
+                        return Err(Error::Setup {
+                            name: test_actor.name().to_string(),
+                            source,
+                        });
+                    }
+                }
+                Err(err) => {
+                    return Err(Error::Setup {
+                        name: test_actor.name().to_string(),
+                        source: Some(err.into()),
+                    })
+                }
+            }
+        }
+
+        // Update owned state tree
+        let (root, blockstore) = executor.into_store();
+        self.state_tree.override_inner(blockstore, root).unwrap();
+
+        // Increment the sequence for the methods tests.
+        let sequence = self.state_tree.actor_sequence(self.account.0)?;
+
+        // TODO concurrent testing
+        // We'll be able to use thread to do concurrent testing once we set the Engine Pool with more than
+        // one possible concurrent engine.
+        // The following steps will not end up in a result. Either we could finalize message
+        // handling and we return the related ApplyRet or we return nothing.
+        Ok(test_actor
+            .abi
+            .methods
+            .iter()
+            .map(|method| {
                 let root = self.state_tree.flush();
                 let blockstore = self.state_tree.store().clone();
+                // TODO is it possible to impl `Clone` for `DefaultExecutor`
+                // and submit PR upstream to implement with it?
                 let mut executor = KytheraExecutor::new(
                     blockstore,
                     root,
                     self.builtin_actors.root,
                     self.account.1,
-                    test_address,
                     target_id.clone(),
                 );
 
-                // Run the constructor if it exists.
-                if let Some(constructor) = test_actor.abi().constructor() {
-                    match executor.execute_method(constructor.number(), self.next_sequence()) {
-                        Ok(apply_ret) => {
-                            if apply_ret.msg_receipt.exit_code != ExitCode::OK {
-                                let source = apply_ret.failure_info.map(|f| f.to_string().into());
-                                return TestActorResults {
-                                    test_actor,
-                                    results: Err(Error::Constructor { source }),
-                                };
-                            }
-                        }
-                        Err(err) => {
-                            return TestActorResults {
-                                test_actor,
-                                results: Err(Error::Constructor {
-                                    source: Some(err.into()),
-                                }),
-                            }
-                        }
-                    }
-                }
-
-                // Run Setup if it exists.
-                if let Some(set_up) = test_actor.abi().set_up() {
-                    match executor.execute_method(set_up.number(), self.next_sequence()) {
-                        Ok(apply_ret) => {
-                            if apply_ret.msg_receipt.exit_code != ExitCode::OK {
-                                let source = apply_ret.failure_info.map(|f| f.to_string().into());
-                                return TestActorResults {
-                                    test_actor,
-                                    results: Err(Error::Setup { source }),
-                                };
-                            }
-                        }
-                        Err(err) => {
-                            return TestActorResults {
-                                test_actor,
-                                results: Err(Error::Setup {
-                                    source: Some(err.into()),
-                                }),
-                            }
-                        }
-                    }
-                }
-
-                let (root, blockstore) = executor.into_store();
-
-                // Increment the sequence for the methods tests.
-                let sequence = self.next_sequence();
-
-                // TODO concurrent testing
-                // We'll be able to use thread to do concurrent testing once we set the Engine Pool with more than
-                // one possible concurrent engine.
-                // The following steps will not end up in a result. Either we could finalize message
-                // handling and we return the related ApplyRet or we return nothing.
-                log::info!(
-                    "testing {} {} methods",
-                    test_actor.name(),
-                    test_actor.abi().methods().len()
+                log::debug!(
+                    "Testing test {}.{}() for Actor {}",
+                    test_actor.name,
+                    method.name(),
+                    target.actor.name
                 );
-                TestActorResults {
-                    test_actor,
-                    results: Ok(
-                        test_actor
-                            .abi
-                            .methods
-                            .iter()
-                            .map(|method| {
-                                // TODO is it possible to impl `Clone` for `DefaultExecutor`
-                                // and submit PR upstream to implement with it?
-                                let mut executor = KytheraExecutor::new(
-                                    blockstore.clone(),
-                                    root,
-                                    self.builtin_actors.root,
-                                    self.account.1,
-                                    test_address,
-                                    target_id.clone(),
-                                );
+                let message = executor.execute_method(test_address, method.number(), sequence);
 
-                                log::debug!(
-                                    "Testing test {}.{}() for Actor {}",
-                                    test_actor.name,
-                                    method.name(),
-                                    target.name
-                                );
-                                let message = executor.execute_method(method.number(), sequence);
+                let ret = match message {
+                    Ok(apply_ret) => match (method.r#type(), apply_ret.msg_receipt.exit_code) {
+                        (MethodType::Test, ExitCode::OK) => TestResultType::Passed(apply_ret),
+                        (MethodType::TestFail, exit_code) => {
+                            if exit_code == ExitCode::OK {
+                                TestResultType::Failed(apply_ret)
+                            } else {
+                                TestResultType::Passed(apply_ret)
+                            }
+                        }
+                        _ => TestResultType::Failed(apply_ret),
+                    },
+                    Err(err) => TestResultType::Erred(err.to_string()),
+                };
 
-                                let ret = match message {
-                                    Ok(apply_ret) => {
-                                        match (method.r#type(), apply_ret.msg_receipt.exit_code) {
-                                            (MethodType::Test, ExitCode::OK)
-                                            | (
-                                                MethodType::TestFail,
-                                                ExitCode::USR_ASSERTION_FAILED,
-                                            ) => TestResultType::Passed(apply_ret),
-                                            _ => TestResultType::Failed(apply_ret),
-                                        }
-                                    }
-                                    Err(err) => TestResultType::Erred(err.to_string()),
-                                };
-
-                                let result = TestResult {
-                                    method: method.clone(),
-                                    ret,
-                                };
-                                if let Some(ref sender) = stream_results {
-                                    if let Err(err) =
-                                        sender.send((test_actor.clone(), result.clone()))
-                                    {
-                                        log::error!("Could not Stream the Result: {err}");
-                                    }
-                                }
-                                result
-                            })
-                            .collect(),
-                    ),
+                let result = TestResult {
+                    method: method.clone(),
+                    ret,
+                };
+                if let Some(ref sender) = stream_results {
+                    if let Err(err) = sender.send((test_actor.clone(), result.clone())) {
+                        log::error!("Could not Stream the Result: {err}");
+                    }
                 }
+                result
             })
             .collect())
     }

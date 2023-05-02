@@ -1,7 +1,10 @@
 use crate::utils::search::search_files;
 use clap::{ArgAction, Args};
 use colored::Colorize;
-use kythera_lib::{ApplyRet, ExecutionEvent, TestResult, TestResultType, Tester, WasmActor};
+use kythera_lib::{
+    ApplyRet, ExecutionEvent, MethodType, TestResult, TestResultType, Tester, WasmActor,
+};
+use std::error::Error;
 use std::{
     path::PathBuf,
     sync::mpsc::{channel, sync_channel, Receiver, SyncSender},
@@ -28,26 +31,59 @@ pub(crate) struct TestArgs {
 
 /// Kythera cli test command.
 pub(crate) fn test(args: &TestArgs) -> anyhow::Result<()> {
-    let tests = search_files(&args.path)?;
-    for test in tests {
-        // Create two channels, one for streaming the result,
-        // and another for synchronization when the streaming is over.
-        let (sync_tx, sync_rx) = sync_channel(1);
-        let (stream_tx, stream_rx) = channel();
+    let test_targets = search_files(&args.path)?;
+    // Iterate through target actors and respective tests.
+    for test_target in test_targets {
+        log::info!("\tRunning Tests for Actor : {}", test_target.actor.name());
         let mut tester = Tester::new();
-        tester.deploy_target_actor(test.actor)?;
-        let verbosity = args.verbosity;
-        thread::spawn(move || stream_results(stream_rx, sync_tx, verbosity));
-        let _results = tester.test(&test.tests, Some(stream_tx))?;
-        sync_rx
-            .recv()
-            .expect("Should be able to sync the end of streaming results");
+        if let Err(err) = tester.deploy_target_actor(test_target.actor) {
+            log::error!("\nError: {}", err);
+            if let Some(source) = err.source() {
+                log::error!("Caused by: {}", source)
+            }
+            continue;
+        };
+
+        // Filter the [`Method`]s to be test, `MethodType::Test` `MethodType::TestFail`.
+        let populated_tests = test_target
+            .tests
+            .iter()
+            .filter(|test| {
+                test.abi().methods().iter().any(|method| {
+                    matches!(method.r#type(), MethodType::Test | MethodType::TestFail)
+                })
+            })
+            .collect::<Vec<&WasmActor>>();
+
+        log::info!("\t\tTesting {} test files\n", populated_tests.len());
+
+        // Iterate through test actors.
+        for test in populated_tests {
+            // Create two channels, one for streaming the result,
+            // and another for synchronization when the streaming is over.
+            let (sync_tx, sync_rx) = sync_channel(1);
+            let (stream_tx, stream_rx) = channel();
+
+            let verbosity = args.verbosity;
+            thread::spawn(move || stream_results(stream_rx, sync_tx, verbosity));
+
+            if let Err(err) = tester.test(test, Some(stream_tx)) {
+                log::error!("\nError: {}", err);
+                if let Some(source) = err.source() {
+                    log::error!("Caused by: {}", source)
+                }
+            };
+
+            sync_rx
+                .recv()
+                .expect("Should be able to sync the end of streaming results");
+        }
     }
     Ok(())
 }
 
-/// Stream the results received from `Tester::test,
-/// so that users see the result of each test as soon as it finishes.
+/// Stream the results received from `Tester::test, so that users see the result of each test as
+/// soon as it finishes.
 fn stream_results(
     stream: Receiver<(WasmActor, TestResult)>,
     sync_tx: SyncSender<()>,
@@ -55,7 +91,8 @@ fn stream_results(
 ) {
     let mut tests_failed = vec![];
     let mut tests_passed = vec![];
-    let mut result = "ok".green();
+    // Default failed will be shown for test actors that returned errors on setup.
+    let mut result = "FAILED".bright_red();
     for (_actor, test_result) in stream {
         log::info!("{test_result}");
         match test_result.ret() {
@@ -76,30 +113,41 @@ fn stream_results(
         }
     }
 
+    // Optimist mindset that if we got returned values and some of them are passing then all
+    // are passing.
+    if !tests_passed.is_empty() {
+        result = "ok".green();
+    }
+
     // After each and every test result has been printed,
     // we print the sum of failed and passed tests.
     if !tests_failed.is_empty() {
         result = "FAILED".bright_red();
-        log::info!("\nfailures:");
+        log::error!("\nfailures:");
         for f in tests_failed.iter() {
-            log::info!("test {}", f.method());
-            match f.ret() {
-                TestResultType::Erred(err) => {
-                    log::info!("Error: {err}");
+            log::error!("test {}", f.method());
+            match (f.method().r#type(), f.ret()) {
+                (_, TestResultType::Erred(err)) => {
+                    log::error!("\nError: {err}");
                 }
-                TestResultType::Failed(apply_ret) => {
+                (MethodType::Test, TestResultType::Failed(apply_ret)) => {
                     let info = apply_ret
                         .failure_info
                         .as_ref()
                         .expect("Failure info should be available");
-                    log::info!("failed: {info}");
+                    log::error!("failed: {info}");
                 }
-                TestResultType::Passed(_) => panic!("Test should have failed"),
+                (MethodType::TestFail, TestResultType::Failed(_)) => {
+                    log::error!("failed: test exited with exit code 0");
+                }
+                (_, TestResultType::Passed(_)) => panic!("Test should have failed"),
+                _ => panic!("Failed tests should be of type test or test fail"),
             }
         }
     }
+
     log::info!(
-        "test result: {result}. {} passed; {} failed",
+        "\ntest result: {result}. {} passed; {} failed\n",
         tests_passed.len(),
         tests_failed.len()
     );
@@ -132,147 +180,5 @@ fn print_verbose_traces(apply_ret: &ApplyRet) {
             // non_exhaustive enum.
             _ => {}
         }
-    }
-}
-
-#[cfg(test)]
-mod tests {
-    use std::{fs::File, io::Write};
-
-    use assert_cmd::Command;
-    use kythera_actors::wasm_bin::test_actors::BASIC_TEST_ACTOR_BINARY;
-    use kythera_lib::{to_vec, Abi, Method};
-    use predicates::str::contains;
-    use tempfile::{tempdir, TempDir};
-
-    const TARGET_WAT: &str = r#"
-        ;; Mock invoke function
-            (module
-                (func (export "invoke") (param $x i32) (result i32)
-                    (i32.const 1)
-                )
-            )
-        "#;
-
-    fn create_target_and_test_actors(actor: &[u8], test_actor_abi: &Abi) -> TempDir {
-        let dir = tempdir().unwrap();
-        let dir_path = dir.path();
-
-        let mut target_actor_file = File::create(dir_path.join("Target.wasm")).unwrap();
-        target_actor_file
-            .write_all(&wat::parse_str(TARGET_WAT).unwrap())
-            .unwrap();
-        target_actor_file.flush().unwrap();
-
-        let mut target_actor_abi_file = File::create(dir_path.join("Target.cbor")).unwrap();
-        target_actor_abi_file
-            .write_all(
-                &to_vec(&Abi {
-                    constructor: None,
-                    set_up: None,
-                    methods: vec![],
-                })
-                .unwrap(),
-            )
-            .unwrap();
-        target_actor_abi_file.flush().unwrap();
-
-        let mut test_actor_file = File::create(dir_path.join("Target.t.wasm")).unwrap();
-        test_actor_file.write_all(&Vec::from(actor)).unwrap();
-        test_actor_file.flush().unwrap();
-
-        let mut test_actor_abi_file = File::create(dir_path.join("Target.t.cbor")).unwrap();
-        test_actor_abi_file
-            .write_all(&to_vec(test_actor_abi).unwrap())
-            .unwrap();
-        test_actor_abi_file.flush().unwrap();
-
-        dir
-    }
-
-    #[test]
-    fn outputs_passed_tests() {
-        let dir = create_target_and_test_actors(
-            BASIC_TEST_ACTOR_BINARY,
-            &Abi {
-                constructor: None,
-                set_up: None,
-                methods: vec![
-                    Method::new_from_name("TestOne").unwrap(),
-                    Method::new_from_name("TestTwo").unwrap(),
-                ],
-            },
-        );
-        let mut cmd = Command::cargo_bin("kythera").unwrap();
-        cmd.args(["test", &dir.path().to_str().unwrap()])
-            .assert()
-            .success()
-            .stdout(contains("Running Tests for Actor : Target.wasm"))
-            .stdout(contains("Testing 1 test files"))
-            .stdout(contains("testing Target.t.wasm 2 methods"))
-            .stdout(contains("test 3948827889 - TestOne ... ok"))
-            .stdout(contains("test 891686990 - TestTwo ... ok"))
-            .stdout(contains("test result: ok. 2 passed; 0 failed"));
-    }
-
-    #[test]
-    fn outputs_error_tests() {
-        let dir = create_target_and_test_actors(
-            BASIC_TEST_ACTOR_BINARY,
-            &Abi {
-                constructor: None,
-                set_up: None,
-                methods: vec![
-                    Method::new_from_name("NonExistentTest").unwrap(),
-                    Method::new_from_name("TestTwo").unwrap(),
-                ],
-            },
-        );
-        let mut cmd = Command::cargo_bin("kythera").unwrap();
-        cmd.args(["test", &dir.path().to_str().unwrap()])
-            .assert()
-            .success()
-            .stdout(contains("Running Tests for Actor : Target.wasm"))
-            .stdout(contains("Testing 1 test files"))
-            .stdout(contains("testing Target.t.wasm 2 methods"))
-            .stdout(contains("test 4080437639 - NonExistentTest ... FAILED"))
-            .stdout(contains("test 891686990 - TestTwo ... ok"))
-            .stdout(contains("failures:"))
-            .stdout(contains("test 4080437639 - NonExistentTest"))
-            .stdout(contains("failed: message failed with backtrace:"))
-            .stdout(contains(
-                "(method 4080437639) -- Unknown method number (22)",
-            ))
-            .stdout(contains("test result: FAILED. 1 passed; 1 failed"));
-    }
-    #[test]
-    fn outputs_failed_tests() {
-        let dir = create_target_and_test_actors(
-            BASIC_TEST_ACTOR_BINARY,
-            &Abi {
-                constructor: None,
-                set_up: None,
-                methods: vec![Method::new_from_name("TestFailed").unwrap()],
-            },
-        );
-        let mut cmd = Command::cargo_bin("kythera").unwrap();
-        cmd.args(["test", &dir.path().to_str().unwrap()])
-            .assert()
-            .success()
-            .stdout(contains("Running Tests for Actor : Target.wasm"))
-            .stdout(contains("Testing 1 test files"))
-            .stdout(contains("testing Target.t.wasm 1 methods"))
-            .stdout(contains("test 1857827781 - TestFailed ... FAILED"))
-            .stdout(contains("failures:"))
-            .stdout(contains("test 1857827781 - TestFailed"))
-            .stdout(contains("failed: message failed with backtrace:"))
-            .stdout(contains(
-                "(method 1857827781) -- panicked at \'assertion failed: `(left == right)`",
-            ))
-            .stdout(contains("left: `2`,"))
-            .stdout(contains(
-                "right: `3`\', actors/test_actors/basic_test_actor/src/actor.rs:72:5 (24)",
-            ))
-            .stdout(contains("test result: FAILED. 0 passed; 1 failed"));
     }
 }

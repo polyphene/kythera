@@ -54,6 +54,16 @@ impl StateTree {
         Self { inner }
     }
 
+    /// Retrieve the expected sequence for a given actor from the [`StateTree`].
+    pub fn actor_sequence(&self, actor_id: ActorID) -> Result<u64, Error> {
+        match self.inner.get_actor(actor_id).unwrap() {
+            Some(act) => Ok(act.sequence),
+            None => Err(Error::MissingActor {
+                msg: format!("Missing actor in state tree: {actor_id}"),
+            }),
+        }
+    }
+
     pub fn flush(&mut self) -> cid::CidGeneric<64> {
         self.inner
             .flush()
@@ -63,7 +73,7 @@ impl StateTree {
     pub fn store(&self) -> &MemoryBlockstore {
         self.inner.store()
     }
-    /// set actor on the `Blockstore`.
+    /// Set actor on the `Blockstore`.
     /// And activate them on the `StateTree`.
     fn set_actor<S: Serialize>(
         &mut self,
@@ -433,5 +443,20 @@ impl StateTree {
         let actor_address_id = Address::new_id(actor_id);
         self.deploy_actor_from_bin_at_address(&actor_address_id, actor, balance)?;
         Ok(actor_address_id)
+    }
+
+    /// Override current inner `StateTree` with a new `Blockstore` and root `Cid`
+    pub fn override_inner(&mut self, blockstore: MemoryBlockstore, root: Cid) -> Result<(), Error> {
+        if !blockstore
+            .has(&root)
+            .expect("Should be able to check if blockstore contains root Cid")
+        {
+            return Err(Error::StateTree {
+                msg: String::from("Provided blockstore does not contain root Cid"),
+            });
+        }
+        self.inner = kythera_fvm::state_tree::StateTree::new_from_root(blockstore, &root)
+            .expect("Should be able to override inner StateTree");
+        Ok(())
     }
 }

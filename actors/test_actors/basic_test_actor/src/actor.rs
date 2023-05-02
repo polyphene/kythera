@@ -1,14 +1,71 @@
 // Copyright 2023 Polyphene.
 // SPDX-License-Identifier: Apache-2.0, MIT
 
+use cid::{multihash::Code, Cid};
 use frc42_dispatch::match_method;
+use frc42_dispatch::method_hash;
+use fvm_ipld_blockstore::Block;
+use fvm_ipld_encoding::tuple::{Deserialize_tuple, Serialize_tuple};
 use fvm_ipld_encoding::DAG_CBOR;
+use fvm_ipld_encoding::{de::DeserializeOwned, RawBytes};
 use fvm_sdk as sdk;
 use fvm_sdk::NO_DATA_BLOCK_ID;
+use fvm_shared::address::Address;
+use fvm_shared::bigint::Zero;
+use fvm_shared::econ::TokenAmount;
 use fvm_shared::error::ExitCode;
+use fvm_shared::sys::SendFlags;
 use sdk::sys::ErrorNumber;
 use serde::ser;
 use thiserror::Error;
+
+/**************************************************
+ * Actor's state
+ **************************************************/
+
+#[derive(Serialize_tuple, Deserialize_tuple)]
+struct ActorState {
+    value: u32,
+}
+
+impl ActorState {
+    pub fn load(cid: &Cid) -> Self {
+        let data = sdk::ipld::get(cid).unwrap();
+        fvm_ipld_encoding::from_slice::<Self>(&data).unwrap()
+    }
+
+    pub fn save(&self) -> Cid {
+        let serialized = fvm_ipld_encoding::to_vec(self).unwrap();
+        let block = Block {
+            codec: DAG_CBOR,
+            data: serialized,
+        };
+        sdk::ipld::put(
+            Code::Blake2b256.into(),
+            32,
+            block.codec,
+            block.data.as_ref(),
+        )
+        .unwrap()
+    }
+}
+
+/**************************************************
+ * IPLD Utils
+ **************************************************/
+
+/// Deserialize message parameters into given struct.
+pub fn deserialize_params<D: DeserializeOwned>(params: u32) -> D {
+    let params = fvm_sdk::message::params_raw(params)
+        .expect("Could not get message parameters")
+        .expect("Expected message parameters but got none");
+
+    let params = RawBytes::new(params.data);
+
+    params
+        .deserialize()
+        .expect("Should be able to deserialize message params into arguments of called method")
+}
 
 #[derive(Error, Debug)]
 enum IpldError {
@@ -27,7 +84,7 @@ where
 }
 
 #[no_mangle]
-fn invoke(_input: u32) -> u32 {
+fn invoke(input: u32) -> u32 {
     std::panic::set_hook(Box::new(|info| {
         sdk::vm::exit(
             ExitCode::USR_ASSERTION_FAILED.value(),
@@ -40,11 +97,31 @@ fn invoke(_input: u32) -> u32 {
     match_method!(
         method_num,
         {
-            "TestOne" => return_ipld(TestOne()).unwrap(),
-            "TestTwo" => return_ipld(TestTwo()).unwrap(),
+            "Constructor" => {
+                Constructor();
+                NO_DATA_BLOCK_ID
+            },
+            "Setup" => {
+                Setup();
+                NO_DATA_BLOCK_ID
+            },
+            "TestConstructorSetup" => {
+                TestConstructorSetup();
+                NO_DATA_BLOCK_ID
+            },
+            "TestMethodParameter" => {
+                TestMethodParameter(input)
+            },
             "TestFailed" => {
                 TestFailed();
-
+                NO_DATA_BLOCK_ID
+            },
+            "TestFailFailed" => {
+                TestFailFailed();
+                NO_DATA_BLOCK_ID
+            },
+            "TestFailSuccess" => {
+                TestFailSuccess();
                 NO_DATA_BLOCK_ID
             },
             _ => {
@@ -58,16 +135,80 @@ fn invoke(_input: u32) -> u32 {
 }
 
 #[allow(non_snake_case)]
-fn TestOne() -> &'static str {
-    "TestOne"
+fn Constructor() {
+    let state = ActorState { value: 1 };
+    let cid = state.save();
+    fvm_sdk::sself::set_root(&cid).unwrap();
 }
 
 #[allow(non_snake_case)]
-fn TestTwo() -> &'static str {
-    "TestTwo"
+fn Setup() {
+    let mut state = ActorState::load(&sdk::sself::root().unwrap());
+    state.value += 1;
+    let cid = state.save();
+    fvm_sdk::sself::set_root(&cid).unwrap();
 }
 
+// Tests that both the `Constructor` and the `Setup` method are called by Kythera `Tester`.
+#[allow(non_snake_case)]
+fn TestConstructorSetup() {
+    let state = ActorState::load(&sdk::sself::root().unwrap());
+    let value = state.value;
+    if state.value != 2u32 {
+        sdk::vm::abort(
+            ExitCode::USR_ASSERTION_FAILED.value(),
+            Some(&format!("value is different was not called {value}")),
+        )
+    }
+}
+
+// Tests that the target actor Id is properly passed to test methods. At the same time, it also ensures
+// that `Constructor` is called on target actors as the value we are expecting is initialized there.
+#[allow(non_snake_case)]
+fn TestMethodParameter(input: u32) -> u32 {
+    let target_actor_id: u64 = deserialize_params(input);
+
+    let res = fvm_sdk::send::send(
+        &Address::new_id(target_actor_id),
+        method_hash!("HelloWorld"),
+        None,
+        TokenAmount::zero(),
+        None,
+        SendFlags::empty(),
+    )
+    .unwrap();
+
+    assert_eq!(res.exit_code, ExitCode::OK);
+
+    let who_are_you: String = RawBytes::new(
+        res.return_data
+            .expect("Should be able to get result from HelloWorld of target actor")
+            .data,
+    )
+    .deserialize()
+    .unwrap();
+
+    assert_eq!(who_are_you, String::from("Basic Target Actor"));
+
+    return_ipld(&target_actor_id).unwrap()
+}
+
+// Tests that fails.
 #[allow(non_snake_case)]
 fn TestFailed() {
+    assert_eq!(1 + 1, 3);
+}
+
+// Expected test to fail actually succeed.
+#[allow(non_snake_case)]
+fn TestFailFailed() {
+    let a = 1;
+    let b = a * 2;
+    assert_eq!(a + b, 3);
+}
+
+// Expected test to fail actually succeed.
+#[allow(non_snake_case)]
+fn TestFailSuccess() {
     assert_eq!(1 + 1, 3);
 }

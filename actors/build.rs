@@ -14,7 +14,7 @@ const TEST_ACTORS: &[&str] = &[
     "basic-target-actor",
     "builtins-test-actor",
     "cheatcodes-test-actor",
-    "constructor-setup-test-actor",
+    "fail-test-actor",
 ];
 
 const FILES_TO_WATCH: &[&str] = &["Cargo.toml", "src", "actors"];
