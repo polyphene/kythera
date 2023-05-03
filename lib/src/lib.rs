@@ -12,14 +12,14 @@ pub use kythera_common::{
 pub use kythera_fvm::{
     executor::{ApplyRet, KytheraExecutor},
     trace::ExecutionEvent,
-    Account, Address, Payload,
+    Account, Address, ErrorNumber, Gas, GasCharge, Payload, Receipt, SyscallError, TokenAmount,
 };
 
 use core::fmt;
 use std::sync::mpsc::SyncSender;
 
-use fvm_ipld_encoding::RawBytes;
-use fvm_shared::{bigint::Zero, econ::TokenAmount, error::ExitCode};
+pub use fvm_ipld_encoding::RawBytes;
+pub use fvm_shared::{bigint::Zero, error::ExitCode};
 
 use crate::validator::validate_wasm_bin;
 use error::Error;
@@ -82,7 +82,7 @@ impl WasmActor {
             name: self.name,
             bytecode: self.bytecode,
             abi: self.abi,
-            address: address,
+            address,
         }
     }
 }
@@ -140,6 +140,11 @@ pub struct TestResult {
 }
 
 impl TestResult {
+    /// Create a new [`TestResult`]
+    pub fn new(method: Method, ret: TestResultType) -> Self {
+        TestResult { method, ret }
+    }
+
     /// Check if the [`TestResult`] passed.
     pub fn passed(&self) -> bool {
         matches!(self.ret, TestResultType::Passed(_))

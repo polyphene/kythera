@@ -1,8 +1,17 @@
 // Copyright 2023 Polyphene.
 // SPDX-License-Identifier: Apache-2.0, MIT
 
-pub use fvm::{account_actor, init_actor, system_actor};
+pub use fvm::{
+    account_actor,
+    gas::{Gas, GasCharge},
+    init_actor,
+    kernel::SyscallError,
+    system_actor,
+};
 pub use fvm_shared::address::{Address, Payload};
+pub use fvm_shared::econ::TokenAmount;
+pub use fvm_shared::error::ErrorNumber;
+pub use fvm_shared::receipt::Receipt;
 use fvm_shared::ActorID;
 
 pub mod engine {
