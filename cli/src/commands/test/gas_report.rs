@@ -25,7 +25,7 @@ pub struct ActorInfo {
 struct MethodCost {
     gas_cost: u64,
     num: u64,
-    from: u64,
+    at: u64,
 }
 
 impl GasReport {
@@ -37,7 +37,7 @@ impl GasReport {
         };
         let actor_id = match actor.address().payload() {
             Payload::ID(id) => id,
-            _ => panic!("DeployedActor payload Should be an Id"),
+            _ => panic!("DeployedActor address payload should be an Id"),
         };
 
         for result in test_results {
@@ -66,7 +66,7 @@ impl GasReport {
                         stack.push(MethodCost {
                             gas_cost: 0,
                             num: *method,
-                            from: *from,
+                            at: *from,
                         });
                     }
                     ExecutionEvent::CallReturn(_, _) | ExecutionEvent::CallError(_) => {
@@ -83,7 +83,7 @@ impl GasReport {
                                 .abi()
                                 .methods()
                                 .iter()
-                                .find(|a| a.number() == method_return.num && method_return.from == *actor_id) else {
+                                .find(|a| a.number() == method_return.num && method_return.at == *actor_id) else {
                             continue;
                         };
 
