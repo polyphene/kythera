@@ -123,15 +123,15 @@ impl GasReport {
                 Cell::new("min")
                     .add_attribute(Attribute::Bold)
                     .fg(Color::Green),
+                Cell::new("max")
+                    .add_attribute(Attribute::Bold)
+                    .fg(Color::Red),
                 Cell::new("avg")
                     .add_attribute(Attribute::Bold)
                     .fg(Color::Yellow),
                 Cell::new("median")
                     .add_attribute(Attribute::Bold)
                     .fg(Color::Yellow),
-                Cell::new("max")
-                    .add_attribute(Attribute::Bold)
-                    .fg(Color::Red),
                 Cell::new("# calls").add_attribute(Attribute::Bold),
             ]);
             for (method, mut calls) in contract_info.methods {
@@ -239,7 +239,7 @@ mod tests {
                     ExecutionEvent::GasCharge(GasCharge::new(
                         "",
                         Gas::from_milligas(10),
-                        Gas::from_milligas(20),
+                        Gas::from_milligas(0),
                     )),
                     ExecutionEvent::CallError(kythera_lib::SyscallError(
                         "error".into(),
@@ -248,7 +248,7 @@ mod tests {
                     ExecutionEvent::GasCharge(GasCharge::new(
                         "",
                         Gas::from_milligas(20),
-                        Gas::from_milligas(30),
+                        Gas::from_milligas(0),
                     )),
                     ExecutionEvent::CallReturn(ExitCode::new(0), None),
                 ],
@@ -264,5 +264,208 @@ mod tests {
         let m2m = report.methods.get(&m2_number).unwrap();
         assert_eq!(m2m.len(), 1);
         assert_eq!(m2m[0], 10);
+    }
+
+    #[test]
+    fn calculates_totals() {
+        let m1 = Method::new_from_name("Method1").unwrap();
+        let m1_number = m1.number();
+        let m2 = Method::new_from_name("Method2").unwrap();
+        let m2_number = m2.number();
+        let target = WasmActor::new(
+            "Target.wasm".into(),
+            vec![],
+            kythera_lib::Abi {
+                constructor: None,
+                set_up: None,
+                methods: vec![m1, m2],
+            },
+        )
+        .deploy(Address::new_id(44));
+        let mut gr = GasReport::default();
+        let result1 = TestResult::new(
+            Method::new_from_name("TestMethod1").unwrap(),
+            TestResultType::Passed(ApplyRet {
+                msg_receipt: Receipt {
+                    exit_code: ExitCode::new(0),
+                    return_data: RawBytes::default(),
+                    gas_used: 0,
+                    events_root: None,
+                },
+                penalty: TokenAmount::zero(),
+                miner_tip: TokenAmount::zero(),
+                base_fee_burn: TokenAmount::zero(),
+                over_estimation_burn: TokenAmount::zero(),
+                refund: TokenAmount::zero(),
+                gas_refund: 0,
+                gas_burned: 0,
+                failure_info: None,
+                exec_trace: vec![
+                    ExecutionEvent::Call {
+                        from: 0,
+                        to: Address::new_id(TARGET_ACTOR_ADDRESS),
+                        method: m1_number,
+                        params: None,
+                        value: TokenAmount::zero(),
+                    },
+                    ExecutionEvent::Call {
+                        from: 0,
+                        to: Address::new_id(TARGET_ACTOR_ADDRESS),
+                        method: m2_number,
+                        params: None,
+                        value: TokenAmount::zero(),
+                    },
+                    ExecutionEvent::GasCharge(GasCharge::new(
+                        "",
+                        Gas::from_milligas(10),
+                        Gas::from_milligas(0),
+                    )),
+                    ExecutionEvent::CallError(kythera_lib::SyscallError(
+                        "error".into(),
+                        ErrorNumber::Forbidden,
+                    )),
+                    ExecutionEvent::GasCharge(GasCharge::new(
+                        "",
+                        Gas::from_milligas(20),
+                        Gas::from_milligas(0),
+                    )),
+                    ExecutionEvent::CallReturn(ExitCode::new(0), None),
+                ],
+                events: vec![],
+            }),
+        );
+        let result2 = TestResult::new(
+            Method::new_from_name("TestMethod2").unwrap(),
+            TestResultType::Passed(ApplyRet {
+                msg_receipt: Receipt {
+                    exit_code: ExitCode::new(0),
+                    return_data: RawBytes::default(),
+                    gas_used: 0,
+                    events_root: None,
+                },
+                penalty: TokenAmount::zero(),
+                miner_tip: TokenAmount::zero(),
+                base_fee_burn: TokenAmount::zero(),
+                over_estimation_burn: TokenAmount::zero(),
+                refund: TokenAmount::zero(),
+                gas_refund: 0,
+                gas_burned: 0,
+                failure_info: None,
+                exec_trace: vec![
+                    ExecutionEvent::Call {
+                        from: 0,
+                        to: Address::new_id(TARGET_ACTOR_ADDRESS),
+                        method: m1_number,
+                        params: None,
+                        value: TokenAmount::zero(),
+                    },
+                    ExecutionEvent::Call {
+                        from: 0,
+                        to: Address::new_id(TARGET_ACTOR_ADDRESS),
+                        method: m2_number,
+                        params: None,
+                        value: TokenAmount::zero(),
+                    },
+                    ExecutionEvent::GasCharge(GasCharge::new(
+                        "",
+                        Gas::from_milligas(20),
+                        Gas::from_milligas(0),
+                    )),
+                    ExecutionEvent::CallError(kythera_lib::SyscallError(
+                        "error".into(),
+                        ErrorNumber::Forbidden,
+                    )),
+                    ExecutionEvent::GasCharge(GasCharge::new(
+                        "",
+                        Gas::from_milligas(10),
+                        Gas::from_milligas(0),
+                    )),
+                    ExecutionEvent::CallReturn(ExitCode::new(0), None),
+                ],
+                events: vec![],
+            }),
+        );
+        let result3 = TestResult::new(
+            Method::new_from_name("TestMethod3").unwrap(),
+            TestResultType::Passed(ApplyRet {
+                msg_receipt: Receipt {
+                    exit_code: ExitCode::new(0),
+                    return_data: RawBytes::default(),
+                    gas_used: 0,
+                    events_root: None,
+                },
+                penalty: TokenAmount::zero(),
+                miner_tip: TokenAmount::zero(),
+                base_fee_burn: TokenAmount::zero(),
+                over_estimation_burn: TokenAmount::zero(),
+                refund: TokenAmount::zero(),
+                gas_refund: 0,
+                gas_burned: 0,
+                failure_info: None,
+                exec_trace: vec![
+                    ExecutionEvent::Call {
+                        from: 0,
+                        to: Address::new_id(TARGET_ACTOR_ADDRESS),
+                        method: m1_number,
+                        params: None,
+                        value: TokenAmount::zero(),
+                    },
+                    ExecutionEvent::Call {
+                        from: 0,
+                        to: Address::new_id(TARGET_ACTOR_ADDRESS),
+                        method: m2_number,
+                        params: None,
+                        value: TokenAmount::zero(),
+                    },
+                    ExecutionEvent::GasCharge(GasCharge::new(
+                        "",
+                        Gas::from_milligas(0),
+                        Gas::from_milligas(0),
+                    )),
+                    ExecutionEvent::CallError(kythera_lib::SyscallError(
+                        "error".into(),
+                        ErrorNumber::Forbidden,
+                    )),
+                    ExecutionEvent::GasCharge(GasCharge::new(
+                        "",
+                        Gas::from_milligas(30),
+                        Gas::from_milligas(0),
+                    )),
+                    ExecutionEvent::CallReturn(ExitCode::new(0), None),
+                ],
+                events: vec![],
+            }),
+        );
+
+        gr.analyze(target.clone(), &[result1, result2, result3]);
+        let table = gr.finalize().pop().unwrap();
+        let header = table.header().unwrap();
+        assert_eq!(
+            header.cell_iter().next().unwrap().content(),
+            "Target.wasm contract"
+        );
+        let mut names = table.row(0).unwrap().cell_iter();
+        assert_eq!(names.next().unwrap().content(), "Function Name");
+        assert_eq!(names.next().unwrap().content(), "min");
+        assert_eq!(names.next().unwrap().content(), "max");
+        assert_eq!(names.next().unwrap().content(), "avg");
+        assert_eq!(names.next().unwrap().content(), "median");
+        assert_eq!(names.next().unwrap().content(), "# calls");
+
+        let mut method2 = table.row(1).unwrap().cell_iter();
+        assert_eq!(method2.next().unwrap().content(), "Method2");
+        assert_eq!(method2.next().unwrap().content(), "0");
+        assert_eq!(method2.next().unwrap().content(), "10");
+        assert_eq!(method2.next().unwrap().content(), "10");
+        assert_eq!(method2.next().unwrap().content(), "20");
+        assert_eq!(method2.next().unwrap().content(), "3");
+
+        let mut method1 = table.row(2).unwrap().cell_iter();
+        assert_eq!(method1.next().unwrap().content(), "Method1");
+        assert_eq!(method1.next().unwrap().content(), "30");
+        assert_eq!(method1.next().unwrap().content(), "30");
+        assert_eq!(method1.next().unwrap().content(), "30");
+        assert_eq!(method1.next().unwrap().content(), "30");
+        assert_eq!(method1.next().unwrap().content(), "3");
     }
 }

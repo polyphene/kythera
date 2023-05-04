@@ -531,7 +531,7 @@ fn outputs_gas_report() {
             "╞══════════════════════╪═══════════╪═══════════╪═══════════╪═══════════╪═════════╡",
         ))
         .stdout(contains(
-            "│ Function Name        ┆ min       ┆ avg       ┆ median    ┆ max       ┆ # calls │",
+            "│ Function Name        ┆ min       ┆ max       ┆ avg       ┆ median    ┆ # calls │",
         ))
         .stdout(contains(
             "├╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌┤",
