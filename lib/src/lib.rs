@@ -12,14 +12,14 @@ pub use kythera_common::{
 pub use kythera_fvm::{
     executor::{ApplyRet, KytheraExecutor},
     trace::ExecutionEvent,
-    Account,
+    Account, Address, ErrorNumber, Gas, GasCharge, Payload, Receipt, SyscallError, TokenAmount,
 };
 
 use core::fmt;
-use std::sync::mpsc::Sender;
+use std::sync::mpsc::SyncSender;
 
-use fvm_ipld_encoding::RawBytes;
-use fvm_shared::{address::Address, bigint::Zero, econ::TokenAmount, error::ExitCode};
+pub use fvm_ipld_encoding::RawBytes;
+pub use fvm_shared::{bigint::Zero, error::ExitCode};
 
 use crate::validator::validate_wasm_bin;
 use error::Error;
@@ -75,6 +75,16 @@ impl WasmActor {
     pub fn abi(&self) -> &Abi {
         &self.abi
     }
+
+    /// Convert into a [`DeployedActor`].
+    pub fn deploy(self, address: Address) -> DeployedActor {
+        DeployedActor {
+            name: self.name,
+            bytecode: self.bytecode,
+            abi: self.abi,
+            address,
+        }
+    }
 }
 
 impl fmt::Display for WasmActor {
@@ -84,10 +94,34 @@ impl fmt::Display for WasmActor {
 }
 
 /// An Actor that has been deployed into a `BlockStore`.
-#[derive(Debug, Clone)]
-struct DeployedActor {
-    actor: WasmActor,
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord)]
+pub struct DeployedActor {
+    name: String,
+    bytecode: Vec<u8>,
+    abi: Abi,
     address: Address,
+}
+
+impl DeployedActor {
+    /// Get the WebAssembly Actor name.
+    pub fn name(&self) -> &str {
+        &self.name
+    }
+
+    /// Get the WebAssembly Actor bytecode.
+    pub fn code(&self) -> &[u8] {
+        &self.bytecode
+    }
+
+    /// Get the Actor Abi.
+    pub fn abi(&self) -> &Abi {
+        &self.abi
+    }
+
+    /// Get the Actor [`Address`].
+    pub fn address(&self) -> &Address {
+        &self.address
+    }
 }
 
 /// Outcome of the test.
@@ -106,6 +140,11 @@ pub struct TestResult {
 }
 
 impl TestResult {
+    /// Create a new [`TestResult`]
+    pub fn new(method: Method, ret: TestResultType) -> Self {
+        TestResult { method, ret }
+    }
+
     /// Check if the [`TestResult`] passed.
     pub fn passed(&self) -> bool {
         matches!(self.ret, TestResultType::Passed(_))
@@ -166,8 +205,14 @@ impl Tester {
         }
     }
 
+    /// Retrieve the Deployed target Actor.
+    pub fn deployed_actor(&self) -> Option<&DeployedActor> {
+        self.target_actor.as_ref()
+    }
+
     /// Deploy the target Actor file into the `StateTree`.
-    pub fn deploy_target_actor(&mut self, actor: WasmActor) -> Result<(), Error> {
+    /// Return the [`ApplyRet`] of the constructor call if called.
+    pub fn deploy_target_actor(&mut self, actor: WasmActor) -> Result<Option<ApplyRet>, Error> {
         // Validate wasm bin.
         if let Err(err) = validate_wasm_bin(actor.code()) {
             return Err(Error::Tester {
@@ -199,35 +244,39 @@ impl Tester {
         );
 
         // Run the constructor if it exists.
-        if let Some(constructor) = actor.abi().constructor() {
-            let sequence = self.state_tree.actor_sequence(self.account.0)?;
+        let ret = match actor.abi().constructor() {
+            Some(constructor) => {
+                let sequence = self.state_tree.actor_sequence(self.account.0)?;
 
-            match executor.execute_method(address, constructor.number(), sequence) {
-                Ok(apply_ret) => {
-                    if apply_ret.msg_receipt.exit_code != ExitCode::OK {
-                        let source = apply_ret.failure_info.map(|f| f.to_string().into());
+                match executor.execute_method(address, constructor.number(), sequence) {
+                    Ok(apply_ret) => {
+                        if apply_ret.msg_receipt.exit_code != ExitCode::OK {
+                            let source = apply_ret.failure_info.map(|f| f.to_string().into());
+                            return Err(Error::Constructor {
+                                name: actor.name().to_string(),
+                                source,
+                            });
+                        }
+                        Some(apply_ret)
+                    }
+                    Err(err) => {
                         return Err(Error::Constructor {
                             name: actor.name().to_string(),
-                            source,
+                            source: Some(err.into()),
                         });
                     }
                 }
-                Err(err) => {
-                    return Err(Error::Constructor {
-                        name: actor.name().to_string(),
-                        source: Some(err.into()),
-                    });
-                }
             }
-        }
+            None => None,
+        };
 
         // Update owned state tree
         let (root, blockstore) = executor.into_store();
         self.state_tree.override_inner(blockstore, root).unwrap();
 
-        self.target_actor = Some(DeployedActor { actor, address });
+        self.target_actor = Some(actor.deploy(address));
 
-        Ok(())
+        Ok(ret)
     }
 
     // Get and increment the next Actor sequence.
@@ -241,7 +290,7 @@ impl Tester {
     pub fn test(
         &mut self,
         test_actor: &WasmActor,
-        stream_results: Option<Sender<(WasmActor, TestResult)>>,
+        stream_results: Option<SyncSender<(WasmActor, TestResult)>>,
     ) -> Result<Vec<TestResult>, Error> {
         // Get target actor Id to pass it to test methods.
         let target = self
@@ -374,7 +423,7 @@ impl Tester {
                     "Testing test {}.{}() for Actor {}",
                     test_actor.name,
                     method.name(),
-                    target.actor.name
+                    target.name
                 );
                 let message = executor.execute_method(test_address, method.number(), sequence);
 

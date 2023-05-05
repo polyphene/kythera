@@ -14,7 +14,7 @@ use clap::{Parser, Subcommand};
 
 #[derive(Parser)]
 #[command(name = "Kythera")]
-#[command(author, version, about)]
+#[command(author, version, about, arg_required_else_help(true))]
 struct Cli {
     #[command(subcommand)]
     command: Option<Commands>,
@@ -23,7 +23,7 @@ struct Cli {
 #[derive(Subcommand)]
 enum Commands {
     #[clap(visible_alias = "t")]
-    Test(test::TestArgs),
+    Test(test::Args),
 }
 
 fn main() -> anyhow::Result<()> {

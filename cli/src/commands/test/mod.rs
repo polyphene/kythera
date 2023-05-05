@@ -1,5 +1,7 @@
+mod gas_report;
+
 use crate::utils::search::search_files;
-use clap::{ArgAction, Args};
+use clap::ArgAction;
 use colored::Colorize;
 use kythera_lib::{
     ApplyRet, ExecutionEvent, MethodType, TestResult, TestResultType, Tester, WasmActor,
@@ -7,13 +9,15 @@ use kythera_lib::{
 use std::error::Error;
 use std::{
     path::PathBuf,
-    sync::mpsc::{channel, sync_channel, Receiver, SyncSender},
+    sync::mpsc::{sync_channel, Receiver, SyncSender},
     thread,
 };
 
+use self::gas_report::GasReport;
+
 /// Kythera test command cli arguments.
-#[derive(Args, Debug)]
-pub(crate) struct TestArgs {
+#[derive(clap::Args, Debug)]
+pub(crate) struct Args {
     /// Actor files dir.
     path: PathBuf,
 
@@ -27,22 +31,46 @@ pub(crate) struct TestArgs {
     /// - 3: Print execution traces for all tests, and setup traces for failing tests
     #[clap(long, short, verbatim_doc_comment, action = ArgAction::Count)]
     pub verbosity: u8,
+
+    /// Print gas reports.
+    #[clap(long)]
+    gas_report: bool,
 }
 
 /// Kythera cli test command.
-pub(crate) fn test(args: &TestArgs) -> anyhow::Result<()> {
+pub(crate) fn test(args: &Args) -> anyhow::Result<()> {
     let test_targets = search_files(&args.path)?;
+    let mut gas_report = GasReport::default();
+    let mut tester = Tester::new();
+
     // Iterate through target actors and respective tests.
     for test_target in test_targets {
         log::info!("\tRunning Tests for Actor : {}", test_target.actor.name());
-        let mut tester = Tester::new();
-        if let Err(err) = tester.deploy_target_actor(test_target.actor) {
-            log::error!("\nError: {}", err);
-            if let Some(source) = err.source() {
-                log::error!("Caused by: {}", source)
+        let constructor = test_target.actor.abi().constructor().cloned();
+
+        match (
+            tester.deploy_target_actor(test_target.actor.clone()),
+            constructor,
+        ) {
+            // Target actor constructor should also be accounted in gas costs.
+            (Ok(Some(ret)), Some(constructor)) if args.gas_report => {
+                gas_report.analyze_method(
+                    tester
+                        .deployed_actor()
+                        .expect("Deployed actor should be available"),
+                    constructor,
+                    ret.msg_receipt.gas_used,
+                );
             }
-            continue;
-        };
+            (Err(err), _) => {
+                log::error!("\nError: {}", err);
+                if let Some(source) = err.source() {
+                    log::error!("Caused by: {}", source)
+                }
+                continue;
+            }
+            _ => {}
+        }
 
         // Filter the [`Method`]s to be test, `MethodType::Test` `MethodType::TestFail`.
         let populated_tests = test_target
@@ -62,15 +90,25 @@ pub(crate) fn test(args: &TestArgs) -> anyhow::Result<()> {
             // Create two channels, one for streaming the result,
             // and another for synchronization when the streaming is over.
             let (sync_tx, sync_rx) = sync_channel(1);
-            let (stream_tx, stream_rx) = channel();
+            let (stream_tx, stream_rx) = sync_channel(10);
 
             let verbosity = args.verbosity;
             thread::spawn(move || stream_results(stream_rx, sync_tx, verbosity));
 
-            if let Err(err) = tester.test(test, Some(stream_tx)) {
-                log::error!("\nError: {}", err);
-                if let Some(source) = err.source() {
-                    log::error!("Caused by: {}", source)
+            match tester.test(test, Some(stream_tx)) {
+                Ok(results) => {
+                    if args.gas_report {
+                        let deployed = tester
+                            .deployed_actor()
+                            .expect("Deployed actor should be available");
+                        gas_report.analyze_results(deployed, &results);
+                    }
+                }
+                Err(err) => {
+                    log::error!("\nError: {}", err);
+                    if let Some(source) = err.source() {
+                        log::error!("Caused by: {}", source)
+                    }
                 }
             };
 
@@ -79,6 +117,14 @@ pub(crate) fn test(args: &TestArgs) -> anyhow::Result<()> {
                 .expect("Should be able to sync the end of streaming results");
         }
     }
+
+    if args.gas_report {
+        log::info!("\nGas report");
+        for table in gas_report.finalize() {
+            log::info!("{table}");
+        }
+    }
+
     Ok(())
 }
 
