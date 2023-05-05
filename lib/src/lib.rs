@@ -211,7 +211,8 @@ impl Tester {
     }
 
     /// Deploy the target Actor file into the `StateTree`.
-    pub fn deploy_target_actor(&mut self, actor: WasmActor) -> Result<(), Error> {
+    /// Return the [`ApplyRet`] of the constructor call if called.
+    pub fn deploy_target_actor(&mut self, actor: WasmActor) -> Result<Option<ApplyRet>, Error> {
         // Validate wasm bin.
         if let Err(err) = validate_wasm_bin(actor.code()) {
             return Err(Error::Tester {
@@ -243,27 +244,31 @@ impl Tester {
         );
 
         // Run the constructor if it exists.
-        if let Some(constructor) = actor.abi().constructor() {
-            let sequence = self.state_tree.actor_sequence(self.account.0)?;
+        let ret = match actor.abi().constructor() {
+            Some(constructor) => {
+                let sequence = self.state_tree.actor_sequence(self.account.0)?;
 
-            match executor.execute_method(address, constructor.number(), sequence) {
-                Ok(apply_ret) => {
-                    if apply_ret.msg_receipt.exit_code != ExitCode::OK {
-                        let source = apply_ret.failure_info.map(|f| f.to_string().into());
+                match executor.execute_method(address, constructor.number(), sequence) {
+                    Ok(apply_ret) => {
+                        if apply_ret.msg_receipt.exit_code != ExitCode::OK {
+                            let source = apply_ret.failure_info.map(|f| f.to_string().into());
+                            return Err(Error::Constructor {
+                                name: actor.name().to_string(),
+                                source,
+                            });
+                        }
+                        Some(apply_ret)
+                    }
+                    Err(err) => {
                         return Err(Error::Constructor {
                             name: actor.name().to_string(),
-                            source,
+                            source: Some(err.into()),
                         });
                     }
                 }
-                Err(err) => {
-                    return Err(Error::Constructor {
-                        name: actor.name().to_string(),
-                        source: Some(err.into()),
-                    });
-                }
             }
-        }
+            None => None,
+        };
 
         // Update owned state tree
         let (root, blockstore) = executor.into_store();
@@ -271,7 +276,7 @@ impl Tester {
 
         self.target_actor = Some(actor.deploy(address));
 
-        Ok(())
+        Ok(ret)
     }
 
     // Get and increment the next Actor sequence.

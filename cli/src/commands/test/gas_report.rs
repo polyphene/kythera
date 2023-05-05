@@ -29,12 +29,27 @@ struct MethodCost {
 }
 
 impl GasReport {
-    /// Analyze a set of [`TestResult`]s for a target Actor.
-    pub fn analyze(&mut self, actor: DeployedActor, test_results: &[TestResult]) {
-        let mut info = match self.reports.remove(&actor) {
-            Some(info) => info,
-            None => ActorInfo::default(),
+    pub fn analyze_method(&mut self, actor: &DeployedActor, method: Method, cost: u64) {
+        let (actor, mut info) = match self.reports.remove_entry(actor) {
+            Some((actor, info)) => (actor, info),
+            None => (actor.clone(), ActorInfo::default()),
         };
+        let mut gas_info = match info.methods.remove(&method) {
+            Some(gi) => gi,
+            None => vec![],
+        };
+        gas_info.push(cost);
+        info.methods.insert(method.clone(), gas_info);
+        self.reports.insert(actor, info);
+    }
+
+    /// Analyze a set of [`TestResult`]s for a target Actor.
+    pub fn analyze_results(&mut self, actor: &DeployedActor, test_results: &[TestResult]) {
+        let (actor, mut info) = match self.reports.remove_entry(actor) {
+            Some((actor, info)) => (actor, info),
+            None => (actor.clone(), ActorInfo::default()),
+        };
+
         let actor_id = match actor.address().payload() {
             Payload::ID(id) => id,
             _ => panic!("DeployedActor address payload should be an Id"),
@@ -81,7 +96,7 @@ impl GasReport {
                             previous.gas_cost += method_return.gas_cost;
                         }
 
-                        // If the method called was from the target actor,
+                        // If the method called was from the target actor
                         // we create a new call on `GasInfo` with the totals of gas charge.
                         let Some(method) = actor
                                 .abi()
@@ -189,6 +204,8 @@ mod tests {
 
     #[test]
     fn analyzes_gas_consumption() {
+        let constructor = Method::new_from_name("Constructor").unwrap();
+        let c_number = constructor.number();
         let m1 = Method::new_from_name("Method1").unwrap();
         let m1_number = m1.number();
         let m2 = Method::new_from_name("Method2").unwrap();
@@ -197,6 +214,8 @@ mod tests {
             "Target".into(),
             vec![],
             kythera_lib::Abi {
+                // We can define constructor here as None,
+                // as target actor is not deployed.
                 constructor: None,
                 set_up: None,
                 methods: vec![m1, m2],
@@ -204,6 +223,7 @@ mod tests {
         )
         .deploy(Address::new_id(44));
         let mut gr = GasReport::default();
+        gr.analyze_method(&target, constructor, 40);
         let result = TestResult::new(
             Method::new_from_name("TestMethod").unwrap(),
             TestResultType::Passed(ApplyRet {
@@ -255,9 +275,12 @@ mod tests {
                 events: vec![],
             }),
         );
-        gr.analyze(target.clone(), &[result]);
+        gr.analyze_results(&target, &[result]);
         let report = gr.reports.get(&target).unwrap();
-        assert_eq!(report.methods.len(), 2);
+        assert_eq!(report.methods.len(), 3);
+        let cm = report.methods.get(&c_number).unwrap();
+        assert_eq!(cm.len(), 1);
+        assert_eq!(cm[0], 40);
         let m1m = report.methods.get(&m1_number).unwrap();
         assert_eq!(m1m.len(), 1);
         assert_eq!(m1m[0], 30);
@@ -437,7 +460,7 @@ mod tests {
             }),
         );
 
-        gr.analyze(target.clone(), &[result1, result2, result3]);
+        gr.analyze_results(&target, &[result1, result2, result3]);
         let table = gr.finalize().pop().unwrap();
         let header = table.header().unwrap();
         assert_eq!(

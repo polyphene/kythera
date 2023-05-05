@@ -536,6 +536,7 @@ fn outputs_gas_report() {
         .stdout(contains(
             "├╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌┤",
         ))
+        .stdout(contains("│ Constructor"))
         .stdout(contains("│ HelloWorld"))
         .stdout(contains(
             "╰──────────────────────┴───────────┴───────────┴───────────┴───────────┴─────────╯",

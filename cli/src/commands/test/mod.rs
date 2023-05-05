@@ -1,7 +1,7 @@
 mod gas_report;
 
 use crate::utils::search::search_files;
-use clap::{ArgAction, Args};
+use clap::ArgAction;
 use colored::Colorize;
 use kythera_lib::{
     ApplyRet, ExecutionEvent, MethodType, TestResult, TestResultType, Tester, WasmActor,
@@ -16,8 +16,8 @@ use std::{
 use self::gas_report::GasReport;
 
 /// Kythera test command cli arguments.
-#[derive(Args, Debug)]
-pub(crate) struct TestArgs {
+#[derive(clap::Args, Debug)]
+pub(crate) struct Args {
     /// Actor files dir.
     path: PathBuf,
 
@@ -38,7 +38,7 @@ pub(crate) struct TestArgs {
 }
 
 /// Kythera cli test command.
-pub(crate) fn test(args: &TestArgs) -> anyhow::Result<()> {
+pub(crate) fn test(args: &Args) -> anyhow::Result<()> {
     let test_targets = search_files(&args.path)?;
     let mut gas_report = GasReport::default();
     let mut tester = Tester::new();
@@ -46,13 +46,31 @@ pub(crate) fn test(args: &TestArgs) -> anyhow::Result<()> {
     // Iterate through target actors and respective tests.
     for test_target in test_targets {
         log::info!("\tRunning Tests for Actor : {}", test_target.actor.name());
-        if let Err(err) = tester.deploy_target_actor(test_target.actor) {
-            log::error!("\nError: {}", err);
-            if let Some(source) = err.source() {
-                log::error!("Caused by: {}", source)
+        let constructor = test_target.actor.abi().constructor().cloned();
+
+        match (
+            tester.deploy_target_actor(test_target.actor.clone()),
+            constructor,
+        ) {
+            // Target actor constructor should also be accounted in gas costs.
+            (Ok(Some(ret)), Some(constructor)) if args.gas_report => {
+                gas_report.analyze_method(
+                    tester
+                        .deployed_actor()
+                        .expect("Deployed actor should be available"),
+                    constructor,
+                    ret.msg_receipt.gas_used,
+                );
             }
-            continue;
-        };
+            (Err(err), _) => {
+                log::error!("\nError: {}", err);
+                if let Some(source) = err.source() {
+                    log::error!("Caused by: {}", source)
+                }
+                continue;
+            }
+            _ => {}
+        }
 
         // Filter the [`Method`]s to be test, `MethodType::Test` `MethodType::TestFail`.
         let populated_tests = test_target
@@ -79,12 +97,11 @@ pub(crate) fn test(args: &TestArgs) -> anyhow::Result<()> {
 
             match tester.test(test, Some(stream_tx)) {
                 Ok(results) => {
-                    let deployed = tester
-                        .deployed_actor()
-                        .expect("Deployed actor should be available")
-                        .clone();
                     if args.gas_report {
-                        gas_report.analyze(deployed, &results);
+                        let deployed = tester
+                            .deployed_actor()
+                            .expect("Deployed actor should be available");
+                        gas_report.analyze_results(deployed, &results);
                     }
                 }
                 Err(err) => {
