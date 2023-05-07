@@ -27,6 +27,8 @@ use fil_actors_runtime_v10::{
 };
 use fvm_shared::bigint::Zero;
 use fvm_shared::sector::StoragePower;
+use kythera_actors::wasm_bin::CHEATCODES_ACTOR_BINARY;
+use kythera_common::abi::Abi;
 
 const STATE_TREE_VERSION: StateTreeVersion = StateTreeVersion::V5;
 
@@ -52,6 +54,16 @@ impl StateTree {
         Self { inner }
     }
 
+    /// Retrieve the expected sequence for a given actor from the [`StateTree`].
+    pub fn actor_sequence(&self, actor_id: ActorID) -> Result<u64, Error> {
+        match self.inner.get_actor(actor_id).unwrap() {
+            Some(act) => Ok(act.sequence),
+            None => Err(Error::MissingActor {
+                msg: format!("Missing actor in state tree: {actor_id}"),
+            }),
+        }
+    }
+
     pub fn flush(&mut self) -> cid::CidGeneric<64> {
         self.inner
             .flush()
@@ -61,7 +73,7 @@ impl StateTree {
     pub fn store(&self) -> &MemoryBlockstore {
         self.inner.store()
     }
-    /// set actor on the `Blockstore`.
+    /// Set actor on the `Blockstore`.
     /// And activate them on the `StateTree`.
     fn set_actor<S: Serialize>(
         &mut self,
@@ -88,6 +100,7 @@ impl StateTree {
 
         log::trace!("Setting Actor {} on the BlockStore", name);
         self.inner.set_actor(id, actor_state);
+
         Ok(())
     }
 
@@ -325,6 +338,23 @@ impl StateTree {
         }
     }
 
+    /// Load Kythera utilities' actors.
+    pub fn load_kythera_actors(&mut self) {
+        // Deploy cheatcodes actor.
+        let cheatcodes_actor = WasmActor::new(
+            String::from("Cheatcodes"),
+            CHEATCODES_ACTOR_BINARY.to_vec(),
+            Abi::default(),
+        );
+
+        self.deploy_actor_from_bin_at_address(
+            &Address::new_id(98u64),
+            &cheatcodes_actor,
+            TokenAmount::zero(),
+        )
+        .expect("Should be able to load cheatcodes actor");
+    }
+
     /// Creates new accounts in the testing context
     /// Inserts the account in the state tree, all with the provided balance, returning it and its public key address.
     pub fn create_account(&mut self, accounts_code_cid: Cid) -> Account {
@@ -363,16 +393,14 @@ impl StateTree {
         (assigned_addr, pub_key_addr)
     }
 
-    /// Deploy a new Actor at a given address, provided with a given token balance
-    /// and returns the CodeCID of the installed actor
-    pub fn deploy_actor_from_bin(
+    /// Deploy a new Actor at a given address, provided with a given token balance and returns the
+    /// CodeCID of the installed actor.
+    fn deploy_actor_from_bin_at_address(
         &mut self,
+        address: &Address,
         actor: &WasmActor,
         balance: TokenAmount,
-    ) -> Result<Address, Error> {
-        let actor_id = rand::random();
-        let actor_address = Address::new_id(actor_id);
-
+    ) -> Result<(), Error> {
         // Put the WASM code into the blockstore.
         log::debug!("Deploying Actor {} code", actor.name);
         let code_cid = self
@@ -388,8 +416,47 @@ impl StateTree {
             .setting_err(&actor.name)?;
 
         // Set the Actor State on the `BlockStore`.
-        self.set_actor(&actor.name, [(); 0], code_cid, actor_id, 0, balance)?;
+        self.set_actor(
+            &actor.name,
+            [(); 0],
+            code_cid,
+            address
+                .id()
+                .expect("Should be able to get actor Id from address"),
+            0,
+            balance,
+        )
+    }
 
-        Ok(actor_address)
+    /// Deploy a new Actor provided with a given token balance and returns the CodeCID of the
+    /// installed actor.
+    pub fn deploy_actor_from_bin(
+        &mut self,
+        actor: &WasmActor,
+        balance: TokenAmount,
+    ) -> Result<Address, Error> {
+        let actor_address = Address::new_actor(actor.name.as_bytes());
+        let actor_id = self
+            .inner
+            .register_new_address(&actor_address)
+            .expect("Should be able to register verified registry multisig root address");
+        let actor_address_id = Address::new_id(actor_id);
+        self.deploy_actor_from_bin_at_address(&actor_address_id, actor, balance)?;
+        Ok(actor_address_id)
+    }
+
+    /// Override current inner `StateTree` with a new `Blockstore` and root `Cid`
+    pub fn override_inner(&mut self, blockstore: MemoryBlockstore, root: Cid) -> Result<(), Error> {
+        if !blockstore
+            .has(&root)
+            .expect("Should be able to check if blockstore contains root Cid")
+        {
+            return Err(Error::StateTree {
+                msg: String::from("Provided blockstore does not contain root Cid"),
+            });
+        }
+        self.inner = kythera_fvm::state_tree::StateTree::new_from_root(blockstore, &root)
+            .expect("Should be able to override inner StateTree");
+        Ok(())
     }
 }
