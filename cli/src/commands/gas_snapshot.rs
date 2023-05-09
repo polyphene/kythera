@@ -8,6 +8,8 @@ use std::{
 };
 
 use anyhow::{Context, Result};
+use clap::builder::ValueHint;
+use colored::Colorize;
 use kythera_lib::Tester;
 use serde::{Deserialize, Serialize};
 
@@ -20,10 +22,19 @@ pub struct Args {
     #[clap(long)]
     path: PathBuf,
 
+    /// Output file for the snapshot.
+    #[clap(
+        long,
+        default_value = ".gas-snapshot",
+        value_hint = ValueHint::FilePath,
+        value_name = "FILE",
+    )]
+    snap: PathBuf,
+
     /// Output a diff against a pre-existing snapshot.
     ///
     /// By default, the comparison is done with .gas-snapshot.
-    #[clap(long, conflicts_with = "check")]
+    #[clap(long, conflicts_with = "snap", value_hint = ValueHint::FilePath)]
     diff: Option<Option<PathBuf>>,
 
     /// Compare against a pre-existing snapshot, exiting with code 1 if they do not match.
@@ -31,7 +42,7 @@ pub struct Args {
     /// Outputs a diff if the snapshots do not match.
     ///
     /// By default, the comparison is done with .gas-snapshot.
-    #[clap(long, conflicts_with = "diff")]
+    #[clap(long, conflicts_with = "diff", value_hint = ValueHint::FilePath)]
     check: Option<Option<PathBuf>>,
 }
 
@@ -45,28 +56,21 @@ pub struct MethodCost {
 
 /// Kythera cli test command.
 pub fn snapshot(args: &Args) -> Result<()> {
-    log::info!("Generating gas snapshot");
     let methods = generate(&args.path)?;
+    log::info!("\nGenerating gas snapshot");
 
-    if let Some(path) = &args.diff {
-        let path = path
-            .as_deref()
-            .unwrap_or_else(|| Path::new(".gas-snapshot"));
-        return diff(&methods, path);
-    }
-
-    if let Some(path) = &args.check {
-        let path = path
-            .as_deref()
-            .unwrap_or_else(|| Path::new(".gas-snapshot"));
-        if check(&methods, path)? {
-            std::process::exit(0)
-        } else {
+    if let Some(path) = args.diff.as_ref().or(args.check.as_ref()) {
+        let check = args.check.is_some();
+        let path = path.as_deref().unwrap_or_else(|| &args.path);
+        let equal = diff(&methods, path, check)?;
+        if check && !equal {
             std::process::exit(1)
+        } else {
+            std::process::exit(0)
         }
     }
 
-    let file = File::create(".gas-snapshot")?;
+    let file = File::create(&args.snap).context("Could not create snapshot file")?;
     let mut wtr = csv::Writer::from_writer(file);
     // we need to serialze each method instead of a Vec of them for readibility.
     // see https://github.com/BurntSushi/rust-csv/issues/221#issuecomment-767653324
@@ -79,8 +83,10 @@ pub fn snapshot(args: &Args) -> Result<()> {
 }
 
 /// Output a diff between the `[MethodCost]`s from the [`TestResult`]s and the gas snapshot
-// provided in the input path.
-fn diff(methods: &[MethodCost], path: &Path) -> Result<()> {
+/// provided in the input path. If `check` is true prints the methods not present in the gas snapshot.
+/// Returns true if the the inputs are the same.
+fn diff(methods: &[MethodCost], path: &Path, check: bool) -> Result<bool> {
+    let mut equal = true;
     let file = File::open(path).context("Could not open diff file")?;
     let mut rdr = csv::Reader::from_reader(file);
     let former = rdr
@@ -92,52 +98,42 @@ fn diff(methods: &[MethodCost], path: &Path) -> Result<()> {
     let mut total = 0;
 
     for method in methods {
-        if let Some(c) = former.get(&method.name) {
-            log::info!(
-                "{} : gas used: {} % ",
-                method.name,
-                method.cost as f64 / c.cost as f64 * 100f64
-            );
-            total += method.cost - c.cost;
+        match (former.get(&method.name), check) {
+            (Some(c), _) => {
+                print_gas_diff(&method.name, method.cost, c.cost);
+                total += method.cost - c.cost;
+            }
+            (None, true) => {
+                let message = format!(
+                    "No matching snapshot entry found for \"{}\" in snapshot file",
+                    method.name
+                )
+                .red();
+                log::error!("{}", message);
+                equal = false;
+            }
+            (None, false) => {}
         }
     }
     log::info!("Total gas dif: {total}");
-    Ok(())
+    Ok(equal)
 }
 
-/// Compare the `[MethodCost]`s from the [`TestResult`]s and the gas snapshot
-/// provided in the input path. Returns true if inputs are the same.
-fn check(methods: &[MethodCost], path: &Path) -> Result<bool> {
-    let mut equal = true;
-    let file = File::open(path).context("Could not open check file")?;
-    let mut rdr = csv::Reader::from_reader(file);
-    let former = rdr
-        .deserialize::<MethodCost>()
-        .into_iter()
-        .filter_map(|r| r.ok())
-        .map(|c| (c.name.clone(), c))
-        .collect::<HashMap<_, _>>();
-
-    for method in methods {
-        match former.get(&method.name) {
-            Some(c) => {
-                log::info!(
-                    "{} : gas used: {} % ",
-                    method.name,
-                    method.cost as f64 / c.cost as f64 * 100f64
-                );
-            }
-            None => {
-                log::error!(
-                    "No matching snapshot entry found for \"{}\" in snapshot file",
-                    method.name
-                );
-                equal = false;
-            }
+/// Print the difference in percentage of gas costs, and return its absolute diff
+fn print_gas_diff(name: &str, first: u64, second: u64) {
+    match first.cmp(&second) {
+        std::cmp::Ordering::Equal => {
+            log::info!("{} : gas used is the same: {}", name, first);
+        }
+        std::cmp::Ordering::Less => {
+            let more = (second - first) as f64 / first as f64 * 100.0;
+            log::info!("{} : gas used is more {}%", name, more);
+        }
+        std::cmp::Ordering::Greater => {
+            let less = (first - second) as f64 / first as f64 * 100.0;
+            log::info!("{} : gas used is less {}%", name, less);
         }
     }
-
-    Ok(equal)
 }
 
 /// Generate on the provided path a csv with the gas cost of the list of [`TestResult`]s.
