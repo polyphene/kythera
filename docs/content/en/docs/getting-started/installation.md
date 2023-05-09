@@ -11,12 +11,13 @@ weight: 120
 toc: true
 ---
 
-## Tmp
+## Precompiled binaries
 
-The `tmp` command gathers a suite of temporary sub-commands that should be cleaned and removed
-before the next release:
-- `print-config`: gathers context information from optional configuration file and prints it.
-  > Usage:
-  > ```shell
-  > kythera tmp print-config
-  > ```
+Precompiled binaries are available from the [Github release page](https://github.com/polyphene/kythera/tags).
+
+## Building from source
+
+You can build Kythera binary directly from our main repository through `cargo`:
+```shell
+cargo install --git https://github.com/polyphene/kythera --force kythera
+```

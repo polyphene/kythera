@@ -11,6 +11,13 @@ weight: 130
 toc: true
 ---
 
+This section provide a quick example of how to use the `kythera` command line tool. We demonstrate how to start up a Rust-based
+native actors project, compile and test it.
+
+To start the development clone our dedicated Rust template:
+```shell
+git clone 
+```
 ## Tmp
 
 The `tmp` command gathers a suite of temporary sub-commands that should be cleaned and removed
