@@ -601,7 +601,63 @@ fn creates_gas_snapshot() {
 }
 
 #[test]
-fn prints_check_differences() {
+fn snapshot_check_success() {
+    let dir = tempdir().unwrap();
+    create_target_and_test_actors(
+        &dir,
+        &[
+            Vec::from(BASIC_TARGET_ACTOR_BINARY),
+            Vec::from(BASIC_TEST_ACTOR_BINARY),
+        ],
+        &[
+            (
+                "Target",
+                Abi {
+                    constructor: Some(Method::new_from_name("Constructor").unwrap()),
+                    set_up: None,
+                    methods: vec![
+                        Method::new_from_name("HelloWorld").unwrap(),
+                        Method::new_from_name("Caller").unwrap(),
+                        Method::new_from_name("Origin").unwrap(),
+                    ],
+                },
+            ),
+            (
+                "Target.t",
+                Abi {
+                    constructor: Some(Method::new_from_name("Constructor").unwrap()),
+                    set_up: Some(Method::new_from_name("Setup").unwrap()),
+                    methods: vec![Method::new_from_name("TestMethodParameter").unwrap()],
+                },
+            ),
+        ],
+    );
+
+    let mut cmd = Command::cargo_bin("kythera").unwrap();
+    let path = dir.path().join(".gas-snapshot");
+
+    cmd.args([
+        "snapshot",
+        &dir.path().to_str().unwrap(),
+        "--snap",
+        path.to_str().unwrap(),
+    ])
+    .assert()
+    .success();
+
+    cmd = Command::cargo_bin("kythera").unwrap();
+    cmd.args([
+        "snapshot",
+        &dir.path().to_str().unwrap(),
+        "--check",
+        path.to_str().unwrap(),
+    ])
+    .assert()
+    .success();
+}
+
+#[test]
+fn snapshot_check_fails_differences() {
     let dir = tempdir().unwrap();
     create_target_and_test_actors(
         &dir,
@@ -650,7 +706,7 @@ fn prints_check_differences() {
 }
 
 #[test]
-fn prints_diff_same_gas_usage() {
+fn snapshpt_prints_diff_same_gas_usage() {
     let dir = tempdir().unwrap();
     create_target_and_test_actors(
         &dir,
@@ -708,7 +764,7 @@ fn prints_diff_same_gas_usage() {
 }
 
 #[test]
-fn prints_diff_more_gas_usage() {
+fn snapshot_prints_diff_more_gas_usage() {
     let dir = tempdir().unwrap();
     create_target_and_test_actors(
         &dir,
@@ -787,7 +843,7 @@ fn prints_diff_more_gas_usage() {
 }
 
 #[test]
-fn prints_diff_less_gas_usage() {
+fn snapshot_prints_diff_less_gas_usage() {
     let dir = tempdir().unwrap();
     create_target_and_test_actors(
         &dir,
