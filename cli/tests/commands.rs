@@ -2,6 +2,7 @@ use std::{fs::File, io::Write};
 
 use assert_cmd::Command;
 use kythera_actors::wasm_bin::test_actors::{BASIC_TARGET_ACTOR_BINARY, BASIC_TEST_ACTOR_BINARY};
+use kythera_cli::commands::gas_snapshot::MethodCost;
 use kythera_lib::{to_vec, Abi, Method};
 use predicates::str::contains;
 use tempfile::{tempdir, TempDir};
@@ -541,4 +542,325 @@ fn outputs_gas_report() {
         .stdout(contains(
             "╰──────────────────────┴───────────┴───────────┴───────────┴───────────┴─────────╯",
         ));
+}
+
+#[test]
+fn creates_gas_snapshot() {
+    let dir = tempdir().unwrap();
+    create_target_and_test_actors(
+        &dir,
+        &[
+            Vec::from(BASIC_TARGET_ACTOR_BINARY),
+            Vec::from(BASIC_TEST_ACTOR_BINARY),
+        ],
+        &[
+            (
+                "Target",
+                Abi {
+                    constructor: Some(Method::new_from_name("Constructor").unwrap()),
+                    set_up: None,
+                    methods: vec![
+                        Method::new_from_name("HelloWorld").unwrap(),
+                        Method::new_from_name("Caller").unwrap(),
+                        Method::new_from_name("Origin").unwrap(),
+                    ],
+                },
+            ),
+            (
+                "Target.t",
+                Abi {
+                    constructor: Some(Method::new_from_name("Constructor").unwrap()),
+                    set_up: Some(Method::new_from_name("Setup").unwrap()),
+                    methods: vec![Method::new_from_name("TestMethodParameter").unwrap()],
+                },
+            ),
+        ],
+    );
+
+    let mut cmd = Command::cargo_bin("kythera").unwrap();
+    let path = dir.path().join(".gas-snapshot");
+    cmd.args([
+        "snapshot",
+        &dir.path().to_str().unwrap(),
+        "--snap",
+        path.to_str().unwrap(),
+    ])
+    .assert()
+    .success();
+
+    let file = File::open(path).unwrap();
+    let mut rdr = csv::Reader::from_reader(file);
+    let snapshot = rdr
+        .deserialize::<MethodCost>()
+        .into_iter()
+        .filter_map(|r| r.ok())
+        .collect::<Vec<_>>();
+    assert_eq!(snapshot.len(), 1);
+    assert_eq!("Target.wasm::TestMethodParameter", snapshot[0].name);
+    assert!(snapshot[0].passed)
+}
+
+#[test]
+fn prints_check_differences() {
+    let dir = tempdir().unwrap();
+    create_target_and_test_actors(
+        &dir,
+        &[
+            Vec::from(BASIC_TARGET_ACTOR_BINARY),
+            Vec::from(BASIC_TEST_ACTOR_BINARY),
+        ],
+        &[
+            (
+                "Target",
+                Abi {
+                    constructor: Some(Method::new_from_name("Constructor").unwrap()),
+                    set_up: None,
+                    methods: vec![
+                        Method::new_from_name("HelloWorld").unwrap(),
+                        Method::new_from_name("Caller").unwrap(),
+                        Method::new_from_name("Origin").unwrap(),
+                    ],
+                },
+            ),
+            (
+                "Target.t",
+                Abi {
+                    constructor: Some(Method::new_from_name("Constructor").unwrap()),
+                    set_up: Some(Method::new_from_name("Setup").unwrap()),
+                    methods: vec![Method::new_from_name("TestMethodParameter").unwrap()],
+                },
+            ),
+        ],
+    );
+
+    let mut cmd = Command::cargo_bin("kythera").unwrap();
+    let path2 = dir.path().join(".gas-snapshot2");
+    let _file = File::create(&path2).unwrap();
+    cmd.args([
+        "snapshot",
+        &dir.path().to_str().unwrap(),
+        "--check",
+        path2.to_str().unwrap(),
+    ])
+    .assert()
+    .failure()
+    .stdout(contains(
+        "No matching snapshot entry found for \"Target.wasm::TestMethodParameter\" in snapshot file",
+    ));
+}
+
+#[test]
+fn prints_diff_same_gas_usage() {
+    let dir = tempdir().unwrap();
+    create_target_and_test_actors(
+        &dir,
+        &[
+            Vec::from(BASIC_TARGET_ACTOR_BINARY),
+            Vec::from(BASIC_TEST_ACTOR_BINARY),
+        ],
+        &[
+            (
+                "Target",
+                Abi {
+                    constructor: Some(Method::new_from_name("Constructor").unwrap()),
+                    set_up: None,
+                    methods: vec![
+                        Method::new_from_name("HelloWorld").unwrap(),
+                        Method::new_from_name("Caller").unwrap(),
+                        Method::new_from_name("Origin").unwrap(),
+                    ],
+                },
+            ),
+            (
+                "Target.t",
+                Abi {
+                    constructor: Some(Method::new_from_name("Constructor").unwrap()),
+                    set_up: Some(Method::new_from_name("Setup").unwrap()),
+                    methods: vec![Method::new_from_name("TestMethodParameter").unwrap()],
+                },
+            ),
+        ],
+    );
+
+    let mut cmd = Command::cargo_bin("kythera").unwrap();
+    let path = dir.path().join(".gas-snapshot");
+    cmd.args([
+        "snapshot",
+        &dir.path().to_str().unwrap(),
+        "--snap",
+        path.to_str().unwrap(),
+    ])
+    .assert()
+    .success();
+
+    cmd = Command::cargo_bin("kythera").unwrap();
+    cmd.args([
+        "snapshot",
+        &dir.path().to_str().unwrap(),
+        "--diff",
+        path.to_str().unwrap(),
+    ])
+    .assert()
+    .success()
+    .stdout(contains(
+        "Target.wasm::TestMethodParameter: gas used is the same",
+    ));
+}
+
+#[test]
+fn prints_diff_more_gas_usage() {
+    let dir = tempdir().unwrap();
+    create_target_and_test_actors(
+        &dir,
+        &[
+            Vec::from(BASIC_TARGET_ACTOR_BINARY),
+            Vec::from(BASIC_TEST_ACTOR_BINARY),
+        ],
+        &[
+            (
+                "Target",
+                Abi {
+                    constructor: Some(Method::new_from_name("Constructor").unwrap()),
+                    set_up: None,
+                    methods: vec![
+                        Method::new_from_name("HelloWorld").unwrap(),
+                        Method::new_from_name("Caller").unwrap(),
+                        Method::new_from_name("Origin").unwrap(),
+                    ],
+                },
+            ),
+            (
+                "Target.t",
+                Abi {
+                    constructor: Some(Method::new_from_name("Constructor").unwrap()),
+                    set_up: Some(Method::new_from_name("Setup").unwrap()),
+                    methods: vec![Method::new_from_name("TestMethodParameter").unwrap()],
+                },
+            ),
+        ],
+    );
+
+    let mut cmd = Command::cargo_bin("kythera").unwrap();
+    let path = dir.path().join(".gas-snapshot");
+    let path2 = dir.path().join(".gas-snapshot2");
+    cmd.args([
+        "snapshot",
+        &dir.path().to_str().unwrap(),
+        "--snap",
+        path.to_str().unwrap(),
+    ])
+    .assert()
+    .success();
+
+    let file = File::open(path).unwrap();
+    let mut rdr = csv::Reader::from_reader(file);
+    let mut snapshot = rdr
+        .deserialize::<MethodCost>()
+        .into_iter()
+        .filter_map(|r| r.ok())
+        .collect::<Vec<_>>();
+
+    let more = snapshot[0].cost as f64 * 1.2;
+    let total = (more - snapshot[0].cost as f64).trunc();
+    snapshot[0].cost = more as u64;
+
+    let file = File::create(&path2).unwrap();
+    let mut wtr = csv::Writer::from_writer(file);
+    for method in snapshot {
+        wtr.serialize(method).unwrap();
+    }
+    wtr.flush().unwrap();
+
+    cmd = Command::cargo_bin("kythera").unwrap();
+    cmd.args([
+        "snapshot",
+        &dir.path().to_str().unwrap(),
+        "--diff",
+        path2.to_str().unwrap(),
+    ])
+    .assert()
+    .success()
+    .stdout(contains(
+        "Target.wasm::TestMethodParameter: gas used is 20% more",
+    ))
+    .stdout(contains(format!("Total gas dif: {total}")));
+}
+
+#[test]
+fn prints_diff_less_gas_usage() {
+    let dir = tempdir().unwrap();
+    create_target_and_test_actors(
+        &dir,
+        &[
+            Vec::from(BASIC_TARGET_ACTOR_BINARY),
+            Vec::from(BASIC_TEST_ACTOR_BINARY),
+        ],
+        &[
+            (
+                "Target",
+                Abi {
+                    constructor: Some(Method::new_from_name("Constructor").unwrap()),
+                    set_up: None,
+                    methods: vec![
+                        Method::new_from_name("HelloWorld").unwrap(),
+                        Method::new_from_name("Caller").unwrap(),
+                        Method::new_from_name("Origin").unwrap(),
+                    ],
+                },
+            ),
+            (
+                "Target.t",
+                Abi {
+                    constructor: Some(Method::new_from_name("Constructor").unwrap()),
+                    set_up: Some(Method::new_from_name("Setup").unwrap()),
+                    methods: vec![Method::new_from_name("TestMethodParameter").unwrap()],
+                },
+            ),
+        ],
+    );
+
+    let mut cmd = Command::cargo_bin("kythera").unwrap();
+    let path = dir.path().join(".gas-snapshot");
+    let path2 = dir.path().join(".gas-snapshot2");
+    cmd.args([
+        "snapshot",
+        &dir.path().to_str().unwrap(),
+        "--snap",
+        path.to_str().unwrap(),
+    ])
+    .assert()
+    .success();
+
+    let file = File::open(path).unwrap();
+    let mut rdr = csv::Reader::from_reader(file);
+    let mut snapshot = rdr
+        .deserialize::<MethodCost>()
+        .into_iter()
+        .filter_map(|r| r.ok())
+        .collect::<Vec<_>>();
+
+    let less = snapshot[0].cost as f64 * 0.8;
+    let total = (less - snapshot[0].cost as f64).round();
+    snapshot[0].cost = less as u64;
+
+    let file = File::create(&path2).unwrap();
+    let mut wtr = csv::Writer::from_writer(file);
+    for method in snapshot {
+        wtr.serialize(method).unwrap();
+    }
+    wtr.flush().unwrap();
+
+    cmd = Command::cargo_bin("kythera").unwrap();
+    cmd.args([
+        "snapshot",
+        &dir.path().to_str().unwrap(),
+        "--diff",
+        path2.to_str().unwrap(),
+    ])
+    .assert()
+    .success()
+    .stdout(contains(
+        "Target.wasm::TestMethodParameter: gas used is 20% less",
+    ))
+    .stdout(contains(format!("Total gas dif: {total}")));
 }

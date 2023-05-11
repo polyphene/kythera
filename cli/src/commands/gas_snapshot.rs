@@ -19,7 +19,6 @@ use crate::utils::search::search_files;
 #[derive(clap::Args, Debug)]
 pub struct Args {
     /// Actor files dir.
-    #[clap(long)]
     path: PathBuf,
 
     /// Output file for the snapshot.
@@ -49,9 +48,9 @@ pub struct Args {
 /// Method name with its cost.
 #[derive(Debug, Deserialize, Serialize)]
 pub struct MethodCost {
-    name: String,
-    cost: u64,
-    passed: bool,
+    pub name: String,
+    pub cost: u64,
+    pub passed: bool,
 }
 
 /// Kythera cli test command.
@@ -63,7 +62,7 @@ pub fn snapshot(args: &Args) -> Result<()> {
         let check = args.check.is_some();
         let path = path.as_deref().unwrap_or_else(|| &args.path);
         let equal = diff(&methods, path, check)?;
-        if check && !equal {
+        if dbg!(check) && !equal {
             std::process::exit(1)
         } else {
             std::process::exit(0)
@@ -100,8 +99,23 @@ fn diff(methods: &[MethodCost], path: &Path, check: bool) -> Result<bool> {
     for method in methods {
         match (former.get(&method.name), check) {
             (Some(c), _) => {
-                print_gas_diff(&method.name, method.cost, c.cost);
-                total += method.cost - c.cost;
+                let new = method.cost;
+                let old = c.cost;
+                match new.cmp(&old) {
+                    std::cmp::Ordering::Equal => {
+                        log::info!("{}: gas used is the same: {}", method.name, new);
+                    }
+                    std::cmp::Ordering::Less => {
+                        let more = ((old - new) as f64 / new as f64 * 100.0).round();
+                        log::info!("{}: gas used is {}% more", method.name, more);
+                    }
+                    std::cmp::Ordering::Greater => {
+                        let less = ((new - old) as f64 / new as f64 * 100.0).round();
+                        log::info!("{}: gas used is {}% less", method.name, less);
+                    }
+                }
+
+                total += c.cost as i64 - method.cost as i64;
             }
             (None, true) => {
                 let message = format!(
@@ -117,23 +131,6 @@ fn diff(methods: &[MethodCost], path: &Path, check: bool) -> Result<bool> {
     }
     log::info!("Total gas dif: {total}");
     Ok(equal)
-}
-
-/// Print the difference in percentage of gas costs, and return its absolute diff
-fn print_gas_diff(name: &str, first: u64, second: u64) {
-    match first.cmp(&second) {
-        std::cmp::Ordering::Equal => {
-            log::info!("{} : gas used is the same: {}", name, first);
-        }
-        std::cmp::Ordering::Less => {
-            let more = (second - first) as f64 / first as f64 * 100.0;
-            log::info!("{} : gas used is more {}%", name, more);
-        }
-        std::cmp::Ordering::Greater => {
-            let less = (first - second) as f64 / first as f64 * 100.0;
-            log::info!("{} : gas used is less {}%", name, less);
-        }
-    }
 }
 
 /// Generate on the provided path a csv with the gas cost of the list of [`TestResult`]s.
