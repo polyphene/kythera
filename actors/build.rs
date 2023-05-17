@@ -44,9 +44,10 @@ fn main() -> Result<(), Box<dyn Error>> {
         println!("cargo:rerun-if-changed={}", file);
     }
 
+    #[allow(unused_assignments, unused_mut)]
     let mut actors = ACTORS.to_vec();
-
-    if cfg!(feature = "testing") {
+    #[cfg(feature = "testing")]
+    {
         actors = [ACTORS, TEST_ACTORS].concat();
     }
 
