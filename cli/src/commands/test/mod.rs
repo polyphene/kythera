@@ -26,9 +26,8 @@ pub(crate) struct Args {
     /// Pass multiple times to increase the verbosity (e.g. -v, -vv, -vvv).
     ///
     /// Verbosity levels:
-    /// - 1: Print logs for all tests
     /// - 2: Print execution traces for failing tests
-    /// - 3: Print execution traces for all tests, and setup traces for failing tests
+    /// - 3: Print execution traces for all tests
     #[clap(long, short, verbatim_doc_comment, action = ArgAction::Count)]
     pub verbosity: u8,
 
@@ -144,12 +143,17 @@ fn stream_results(
         match test_result.ret() {
             TestResultType::Passed(apply_ret) | TestResultType::Failed(apply_ret) => {
                 log::info!("(gas consumption: {})", apply_ret.msg_receipt.gas_used);
-                if verbosity >= 2 {
+                // 'vvv', prints all traces.
+                if verbosity == 3 {
                     print_verbose_traces(apply_ret);
                 }
                 if test_result.passed() {
                     tests_passed.push(test_result);
                 } else {
+                    // 'vv', prints failing traces.
+                    if verbosity == 2 {
+                        print_verbose_traces(apply_ret);
+                    }
                     tests_failed.push(test_result);
                 }
             }
