@@ -33,10 +33,7 @@ use fvm_sdk as sdk;
 use fvm_sdk::NO_DATA_BLOCK_ID;
 use fvm_shared::error::ExitCode;
 
-/**************************************************
- * Actor's state
- **************************************************/
-
+// Actor's state.
 #[derive(Serialize_tuple, Deserialize_tuple)]
 struct ActorState {
     value: u32,

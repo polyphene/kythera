@@ -89,10 +89,7 @@ use fvm_shared::error::ExitCode;
 use serde::ser;
 use thiserror::Error;
 
-/**************************************************
- * Actor's state
- **************************************************/
-
+// Actor's state.
 #[derive(Serialize_tuple, Deserialize_tuple)]
 struct ActorState {
     who_am_i: String,
@@ -120,9 +117,7 @@ impl ActorState {
     }
 }
 
-/**************************************************
- * IPLD Utils
- **************************************************/
+// IPLD Utils.
 
 #[derive(Error, Debug)]
 enum IpldError {
@@ -139,6 +134,7 @@ where
     let bytes = fvm_ipld_encoding::to_vec(value)?;
     Ok(fvm_sdk::ipld::put_block(DAG_CBOR, bytes.as_slice())?)
 }
+
 #[no_mangle]
 fn invoke(_input: u32) -> u32 {
     let method_num = fvm_sdk::message::method_number();

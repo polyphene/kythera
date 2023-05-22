@@ -37,10 +37,7 @@ use sdk::sys::ErrorNumber;
 use serde::ser;
 use thiserror::Error;
 
-/*********************************************************
- * Actor's state
- *********************************************************/
-
+// Actor's state.
 #[derive(Serialize_tuple, Deserialize_tuple)]
 struct DemoActorState {
     value: u32,
@@ -68,9 +65,7 @@ impl DemoActorState {
     }
 }
 
-/*********************************************************
- * IPLD Utils
- *********************************************************/
+// IPLD Utils.
 
 #[derive(Error, Debug)]
 enum IpldError {
@@ -101,10 +96,6 @@ pub fn deserialize_params<D: DeserializeOwned>(params: u32) -> D {
         .deserialize()
         .expect("Should be able to deserialize message params into arguments of called method")
 }
-
-/*********************************************************
- * Logic
- *********************************************************/
 
 #[no_mangle]
 fn invoke(input: u32) -> u32 {
@@ -186,9 +177,8 @@ use fvm_shared::econ::TokenAmount;
 use fvm_shared::error::ExitCode;
 use fvm_shared::sys::SendFlags;
 
-/*********************************************************
- * IPLD Utils
- *********************************************************/
+// IPLD Utils.
+
 /// Deserialize message parameters into given struct.
 pub fn deserialize_params<D: DeserializeOwned>(params: u32) -> D {
     let params = fvm_sdk::message::params_raw(params)
