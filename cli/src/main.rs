@@ -2,12 +2,15 @@
 // SPDX-License-Identifier: Apache-2.0, MIT
 
 use env_logger::Target;
-use kythera_cli::commands::{gas_snapshot, test};
 use log::LevelFilter;
 
 use std::io::Write;
 
+use crate::commands::{gas_snapshot, test};
 use clap::{Parser, Subcommand};
+
+mod commands;
+mod utils;
 
 #[derive(Parser)]
 #[command(name = "Kythera")]

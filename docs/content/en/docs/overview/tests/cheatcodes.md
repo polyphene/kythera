@@ -8,7 +8,7 @@ draft: false
 images: []
 menu:
   docs:
-    parent: "overview"
+    parent: "tests"
 weight: 222
 toc: true
 ---
@@ -17,9 +17,9 @@ Most of the time, simply testing your actors outputs isn't enough. To manipulate
 as well as test for specific edge cases, Kythera is shipped with a set of cheatcodes.
 
 Cheatcodes allow you to change the block number, your identity, and more. They are invoked by calling specific functions
-on a specially designated actor Id: `98`.
+on a specially designated actor ID: `98`.
 
-Let's write an actor with a state that can only be updated by a selected actor Id, `250`.
+Let's write an actor with a state that can only be updated by a selected actor ID, `250`.
 ```rust
 // Copyright 2023 Polyphene.
 // SPDX-License-Identifier: Apache-2.0, MIT
@@ -274,9 +274,10 @@ fn TestWrite(input: u32) {
 }
 ```
 
-If we run `kythera test` now, we will see that the test fails as the actor expects the send actor Id to be `250`:
+If we run `kythera test` now, we will see that the test fails as the actor expects the send actor ID to be `250`:
 ```shell
 $ kythera test ./artifacts
+
 	Running Tests for Actor : Locked.wasm
 		Testing 1 test files
 
@@ -299,7 +300,7 @@ test result: FAILED. 0 passed; 1 failed
 ```
 
 Let's add a step in the code to call our cheatcodes actor to prank the machine in thinking that we are actually the actor
-at Id `250`:
+at ID `250`:
 
 ```rust
 // ...
@@ -330,6 +331,7 @@ fn TestWrite(input: u32) {
 Now, if we run `kythera test` again:
 ```shell
 $ kythera test ./artifacts
+
 	Running Tests for Actor : Locked.wasm
 		Testing 1 test files
 
@@ -342,4 +344,4 @@ test result: ok. 1 passed; 0 failed
 
 > 📚 **Reference**
 >
-> See the [Cheatcodes]() Reference for a complete overview of all the available cheatcodes.
+> See the [Cheatcodes](/docs/reference/cheatcodes/) Reference for a complete overview of all the available cheatcodes.

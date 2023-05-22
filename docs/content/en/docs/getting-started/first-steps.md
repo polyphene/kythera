@@ -1,7 +1,7 @@
 ---
 title: "First Steps with Kythera"
-date: 2023-04-03T11:01:56+02:00
-lastmod: 2023-04-03T11:01:56+02:00
+date: 2023-05-22T10:00:00+00:00
+lastmod: 2023-05-22T10:00:00+00:00
 draft: false
 images: []
 menu:
@@ -21,13 +21,14 @@ those languages.
 
 To start the development clone our dedicated Rust template:
 ```shell
-git clone https://github.com/polyphene/kythera-rs-starter.git
+$ git clone https://github.com/polyphene/kythera-rs-starter.git
 ```
 
 Let's see how the project layout looks like:
 ```shell
 $ cd kythera-rs-starter
 $ tree . -d -L 1
+
 .
 ├── actors
 ├── build-helper
@@ -36,28 +37,29 @@ $ tree . -d -L 1
 
 4 directories
 ```
-
-Now, we can simply build necessary assets through a simple `cargo build`:
-```shell
-$ cargo build
-    ...
-    Finished dev [unoptimized + debuginfo] target(s) in 2m 10s
-```
-
-Once the source actors are compiled we can now run our tests:
-```shell
-$kythera test 
-	Running Tests for Actor : HelloWorld.wasm
-		Testing 1 test files
-
-HelloWorld.t.wasm: testing 2 tests
-test TestConstructorSetup ... ok
-(gas consumption: 1519287)
-test TestMethodParameter ... ok
-(gas consumption: 2706032)
-
-test result: ok. 2 passed; 0 failed
-```
+    
+    Now, we can simply build necessary assets through a simple `cargo build`:
+    ```shell
+    $ cargo build
+        ...
+        Finished dev [unoptimized + debuginfo] target(s) in 2m 10s
+    ```
+    
+    Once the source actors are compiled we can now run our tests:
+    ```shell
+    $ kythera test 
+    
+        Running Tests for Actor : HelloWorld.wasm
+            Testing 1 test files
+    
+    HelloWorld.t.wasm: testing 2 tests
+    test TestConstructorSetup ... ok
+    (gas consumption: 1519287)
+    test TestMethodParameter ... ok
+    (gas consumption: 2706032)
+    
+    test result: ok. 2 passed; 0 failed
+    ```
 
 > 💡 **Tip**
 > 

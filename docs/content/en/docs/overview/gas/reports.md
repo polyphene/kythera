@@ -2,13 +2,13 @@
 title: "Gas Reports"
 description: ""
 lead: ""
-date: 2020-10-06T08:48:57+00:00
-lastmod: 2020-10-06T08:48:57+00:00
+date: 2023-05-22T10:00:00+00:00
+lastmod: 2023-05-22T10:00:00+00:00
 draft: false
 images: []
 menu:
   docs:
-    parent: "overview"
+    parent: "gas"
 weight: 231
 toc: true
 ---

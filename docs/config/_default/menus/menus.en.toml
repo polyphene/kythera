@@ -16,6 +16,18 @@
   identifier = "reference"
   url = "/docs/reference/"
 
+[[docs]]
+  name = "Tutorials"
+  weight = 400
+  identifier = "tutorials"
+  url = "/docs/tutorials/"
+
+[[docs]]
+  name = "Appendix"
+  weight = 300
+  identifier = "appendix"
+  url = "/docs/appendix/"
+
 [[main]]
   name = "Documentation"
   url = "/docs/getting-started/introduction/"
@@ -23,7 +35,8 @@
 
 [[main]]
   name = "Tutorial"
-  url = "/tutorial/overview/"
+  identifier="tutorial"
+  url = "/docs/tutorials/overview"
   weight = 20
 
 [[social]]

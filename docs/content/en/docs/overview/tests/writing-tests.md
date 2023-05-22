@@ -8,7 +8,7 @@ draft: false
 images: []
 menu:
   docs:
-    parent: "overview"
+    parent: "tests"
 weight: 221
 toc: true
 ---
@@ -185,5 +185,5 @@ fn TestFailStateValue() {
 }
 ```
 
-Tests are deployed to the next highest actor Id available in the machine context, to ensure no overlap with external forked state.
-If an actor is interacted with within the tests the default sender will be the actor Id associated to the test actor.
+Tests are deployed to the next highest actor ID available in the machine context, to ensure no overlap with external forked state.
+If an actor is interacted with within the tests the default sender will be the actor ID associated to the test actor.

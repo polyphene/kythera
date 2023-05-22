@@ -2,8 +2,8 @@
 title: "Introduction"
 description: ""
 lead: ""
-date: 2020-10-06T08:48:57+00:00
-lastmod: 2020-10-06T08:48:57+00:00
+date: 2023-05-22T10:00:00+00:00
+lastmod: 2023-05-22T10:00:00+00:00
 draft: false
 images: []
 menu:
@@ -25,7 +25,7 @@ with them.
 
 To get started with Kythera, install Kythera and setup your first project.
 
-[**Overview**]()
+[**Overview**](/docs/overview/kythera/)
 
 This overview will give you all you need to know about how to use `kythera` to develop, test, deploy, and interact with
 smart contracts.
@@ -34,15 +34,15 @@ smart contracts.
 
 Tutorials on building actors with Kythera.
 
-- [Use Kythera over a Rust-base native actors project]()
-- [Create a Token actor using Helix implementation]()
+- [Use Kythera over a Rust-base native actors project](/docs/tutorials/rust/requirements/)
 
 **Contributing**
 
-Help us improve Kythera by [contributing]()
+Help us improve Kythera by [contributing](/docs/appendix/contributing/)
 
-**Appendix**
+**Reference**
 
-- [Config reference]()
-- [Cheatcodes reference]()
+- [Test command](/docs/reference/kythera-test/)
+- [Snapshot command](/docs/reference/kythera-snapshot/)
+- [Cheatcodes](/docs/reference/cheatcodes/)
 
