@@ -17,7 +17,7 @@ use self::gas_report::GasReport;
 
 /// Kythera test command cli arguments.
 #[derive(clap::Args, Debug)]
-pub(crate) struct Args {
+pub struct Args {
     /// Actor files dir.
     path: PathBuf,
 
@@ -37,7 +37,7 @@ pub(crate) struct Args {
 }
 
 /// Kythera cli test command.
-pub(crate) fn test(args: &Args) -> anyhow::Result<()> {
+pub fn test(args: &Args) -> anyhow::Result<()> {
     let test_targets = search_files(&args.path)?;
     let mut gas_report = GasReport::default();
     let mut tester = Tester::new();
