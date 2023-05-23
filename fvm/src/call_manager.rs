@@ -1,6 +1,6 @@
 use crate::kernel::KytheraKernel;
 use crate::machine::KytheraMachine;
-use crate::utils::{CHAIN_ID_NUM, EPOCH_NUM, FEE_NUM, PRANK_NUM, TRICK_NUM, WARP_NUM};
+use crate::utils::{CHAIN_ID_NUM, EPOCH_NUM, FEE_NUM, LOG_NUM, PRANK_NUM, TRICK_NUM, WARP_NUM};
 use anyhow::anyhow;
 use cid::Cid;
 use fvm::call_manager::{CallManager, DefaultCallManager, FinishRet, InvocationResult};
@@ -15,6 +15,7 @@ use fvm_shared::address::Address;
 use fvm_shared::econ::TokenAmount;
 use fvm_shared::event::StampedEvent;
 use fvm_shared::{ActorID, MethodNum};
+use log::Level;
 
 #[repr(transparent)]
 pub struct KytheraCallManager<C: CallManager = DefaultCallManager<KytheraMachine>>(pub C);
@@ -27,6 +28,7 @@ where
     fn handle_cheatcode(
         &mut self,
         method: MethodNum,
+        from: ActorID,
         params: Option<Block>,
     ) -> fvm::kernel::Result<()> {
         match method {
@@ -151,6 +153,26 @@ where
 
                 self.machine_mut().override_context.origin = Some(new_origin_id);
             }
+            LOG_NUM => {
+                let (level, message): (String, String) = from_slice(
+                    params
+                        .ok_or(ExecutionError::Fatal(anyhow!(
+                            "No parameters provided for Log cheatcode"
+                        )))?
+                        .data(),
+                )
+                .map_err(|err| {
+                    ExecutionError::Fatal(anyhow!(format!(
+                        "Could not deserialize parameters for Log cheatcode: {}",
+                        err
+                    )))
+                })?;
+                let level = level.parse::<Level>().map_err(|_| {
+                    ExecutionError::Fatal(anyhow!("Could not parse log level for Log cheatcode"))
+                })?;
+
+                log::log!(target: "kythera-fvm::actors::logging", level, "Actor::{from}::log: {message}");
+            }
             _ => return Err(ExecutionError::Fatal(anyhow!("Call to unknown cheatcode"))),
         }
 
@@ -201,7 +223,7 @@ where
     ) -> fvm::kernel::Result<InvocationResult> {
         // If cheatcode actor then we proceed as usual
         if to == Address::new_id(98) {
-            self.handle_cheatcode(method, params.clone())?;
+            self.handle_cheatcode(method, from, params.clone())?;
 
             self.0
                 .send::<KytheraKernel<K>>(from, to, method, params, value, gas_limit, read_only)
