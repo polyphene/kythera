@@ -11,7 +11,7 @@ default = []
 colors = ["colored"]
 
 [dependencies]
-actors-v10 = { package = "fil_builtin_actors_bundle", git = "https://github.com/filecoin-project/builtin-actors", rev = "39571e2" }
+actors-v10 = { package = "fil_builtin_actors_bundle", git = "https://github.com/filecoin-project/builtin-actors", rev = "39571e2", version="10.0.0" }
 fil_actor_account_v10 = "1.0.0"
 fil_actor_cron_v10 = "1.0.0"
 fil_actor_datacap_v10 = "1.0.0"
