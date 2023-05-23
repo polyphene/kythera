@@ -11,3 +11,4 @@ The following cheatcodes are exposed through the actor:
 - `ChaindId`: Set the `NetworkContext::chain_id`
 - `Prank`: Sets the **next implicit message**'s `MessageContext::caller` to be the input address
 - `Trick`: Sets the **next implicit message and its sub-implicit messages**' `MessageContext::origin` to be the input address
+- `Alter`: Sets the state value of a given actor to be the input IPLD block
