@@ -15,7 +15,6 @@ use fvm_shared::address::Address;
 use fvm_shared::econ::TokenAmount;
 use fvm_shared::event::StampedEvent;
 use fvm_shared::{ActorID, MethodNum};
-use log::Level;
 
 #[repr(transparent)]
 pub struct KytheraCallManager<C: CallManager = DefaultCallManager<KytheraMachine>>(pub C);
@@ -154,7 +153,7 @@ where
                 self.machine_mut().override_context.origin = Some(new_origin_id);
             }
             LOG_NUM => {
-                let (level, message): (String, String) = from_slice(
+                let message: String = from_slice(
                     params
                         .ok_or(ExecutionError::Fatal(anyhow!(
                             "No parameters provided for Log cheatcode"
@@ -167,11 +166,8 @@ where
                         err
                     )))
                 })?;
-                let level = level.parse::<Level>().map_err(|_| {
-                    ExecutionError::Fatal(anyhow!("Could not parse log level for Log cheatcode"))
-                })?;
 
-                log::log!(target: "kythera-fvm::actors::logging", level, "Actor::{from}::log: {message}");
+                log::info!(target: "kythera-fvm::actors::logging", "Actor::{from}::log: {message}");
             }
             _ => return Err(ExecutionError::Fatal(anyhow!("Call to unknown cheatcode"))),
         }

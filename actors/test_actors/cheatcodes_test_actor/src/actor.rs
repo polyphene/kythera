@@ -350,11 +350,11 @@ fn TestFailAddressTypeTrick(_input: u32) {
 // Checks Warp cheatcode happy path.
 #[allow(non_snake_case)]
 fn TestLog(_input: u32) {
-    let params = ("Info", "hello from actor");
+    let message = "hello from actor";
     let res = fvm_sdk::send::send(
         &Address::new_id(98),
         method_hash!("Log"),
-        Some(IpldBlock::serialize(DAG_CBOR, &params).unwrap()),
+        Some(IpldBlock::serialize(DAG_CBOR, &message).unwrap()),
         TokenAmount::zero(),
         None,
         SendFlags::empty(),
