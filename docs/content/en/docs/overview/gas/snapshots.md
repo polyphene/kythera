@@ -13,7 +13,7 @@ weight: 232
 toc: true
 ---
 
-Forge can generate gas snapshots for all your test functions. This can be useful to get a general feel for how much gas 
+Kythera can generate gas snapshots for all your test functions. This can be useful to get a general feel for how much gas 
 your contract will consume, or to compare gas usage before and after various optimizations.
 
 To generate the gas snapshot, run `kythera snapshot <Path to artifacts>`.

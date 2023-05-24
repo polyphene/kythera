@@ -122,7 +122,7 @@ fn test_failing_test_actor_constructor_setup() {
     let test_abi = Abi {
         constructor: Some(Method::new_from_name("Constructor").unwrap()),
         set_up: None,
-        methods: vec![Method::new_from_name("TestBuiltinsDeployed").unwrap()],
+        methods: vec![],
     };
     let constructor_test_actor =
         WasmActor::new(String::from("Constructor.t.wasm"), test_wasm_bin, test_abi);
@@ -132,7 +132,7 @@ fn test_failing_test_actor_constructor_setup() {
     let test_abi = Abi {
         constructor: None,
         set_up: Some(Method::new_from_name("Setup").unwrap()),
-        methods: vec![Method::new_from_name("TestBuiltinsDeployed").unwrap()],
+        methods: vec![],
     };
     let setup_test_actor = WasmActor::new(String::from("Setup.t.wasm"), test_wasm_bin, test_abi);
 
