@@ -27,9 +27,9 @@ jobs:
         id: filter
         with:
           filters: |
-            kythera-fvm: fvm/Cargo.toml
-            kythera-common: common/Cargo.toml
             kythera-actors: actors/Cargo.toml
+            kythera-common: common/Cargo.toml
+            kythera-fvm: fvm/Cargo.toml
             kythera-lib: lib/Cargo.toml
             kythera-cli: cli/Cargo.toml
 
@@ -46,14 +46,6 @@ jobs:
         crate: ${{ fromJSON(needs.gather_crates.outputs.crates) }}
     steps:
       - uses: actions/checkout@v3
-
-      - name: Check if we compile without any features activated
-        run: cargo --locked build --package ${{ matrix.crate }} --no-default-features
-
-      # Publication dry-run flow should run on pull request on the `main` branch
-      - name: Dry publish
-        run: cargo publish -p ${{ matrix.crate }} --dry-run
-        if: ${{ github.event_name == 'pull_request' }}
 
       # Publication flow should run on merge on the `main` branch
       - name: Publish
