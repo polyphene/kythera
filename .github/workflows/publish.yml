@@ -27,8 +27,11 @@ jobs:
         id: filter
         with:
           filters: |
-            kythera-cli: cli/Cargo.toml
+            kythera-fvm: fvm/Cargo.toml
+            kythera-common: common/Cargo.toml
+            kythera-actors: actors/Cargo.toml
             kythera-lib: lib/Cargo.toml
+            kythera-cli: cli/Cargo.toml
 
   publish:
     name: Publish ${{ matrix.crate }}
