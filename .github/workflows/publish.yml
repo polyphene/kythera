@@ -40,6 +40,7 @@ jobs:
       - gather_crates
     if: ${{ needs.gather_crates.outputs.crates != '[]' && needs.gather_crates.outputs.crates != '' }}
     strategy:
+      max-parallel: 1
       fail-fast: false
       matrix:
         crate: ${{ fromJSON(needs.gather_crates.outputs.crates) }}
