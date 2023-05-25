@@ -31,9 +31,9 @@ fvm_ipld_car = { version = "0.6.0" }
 fvm_ipld_encoding = { version = "0.3.3" }
 fvm_shared = { version = "3.1.0", features = ["testing"] }
 
-kythera-actors = { path = "../actors" }
-kythera-fvm = { path = "../fvm" }
-kythera-common = { path = "../common" }
+kythera-actors = { path = "../actors", version = "0.1.0" }
+kythera-fvm = { path = "../fvm", version = "0.1.0" }
+kythera-common = { path = "../common", version = "0.1.0" }
 
 
 cid = { version = "0.8.5", default-features = false }
