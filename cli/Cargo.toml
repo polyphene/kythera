@@ -10,6 +10,9 @@ documentation = "https://polyphene.github.io/kythera/"
 repository = "https://github.com/polyphene/kythera"
 keywords = ["kythera", "cli", "filecoin", "fvm", "wasm"]
 categories = ["command-line-utilities"]
+homepage="https://polyphene.github.io/kythera/"
+readme="README.md"
+
 
 [[bin]]
 name = "kythera"

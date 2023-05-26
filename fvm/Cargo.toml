@@ -2,7 +2,11 @@
 name = "kythera-fvm"
 version = "0.1.0"
 edition = "2021"
-
+description="Core implementation of the Kythera FVM"
+homepage="https://polyphene.github.io/kythera/"
+documentation="https://polyphene.github.io/kythera/"
+repository="https://github.com/polyphene/kythera"
+readme="README.md"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
