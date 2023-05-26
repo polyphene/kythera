@@ -1,1 +1,26 @@
-<?xml version="1.0" encoding="utf-8" standalone="yes"?><rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom"><channel><title>Reference on</title><link>https://polyphene.github.io/kythera/docs/reference/</link><description>Recent content in Reference on</description><generator>Hugo -- gohugo.io</generator><lastBuildDate>Tue, 06 Oct 2020 08:48:45 +0000</lastBuildDate><atom:link href="https://polyphene.github.io/kythera/docs/reference/index.xml" rel="self" type="application/rss+xml"/><item><title>Introduction</title><link>https://polyphene.github.io/kythera/docs/reference/introduction/</link><pubDate>Tue, 06 Oct 2020 08:48:57 +0000</pubDate><guid>https://polyphene.github.io/kythera/docs/reference/introduction/</guid><description>🚧</description></item></channel></rss>
+<?xml version="1.0" encoding="utf-8" standalone="yes"?><rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom"><channel><title>Reference on</title><link>https://polyphene.github.io/kythera/docs/reference/</link><description>Recent content in Reference on</description><generator>Hugo -- gohugo.io</generator><lastBuildDate>Mon, 22 May 2023 10:00:00 +0000</lastBuildDate><atom:link href="https://polyphene.github.io/kythera/docs/reference/index.xml" rel="self" type="application/rss+xml"/><item><title>kythera test</title><link>https://polyphene.github.io/kythera/docs/reference/kythera-test/</link><pubDate>Mon, 22 May 2023 10:00:00 +0000</pubDate><guid>https://polyphene.github.io/kythera/docs/reference/kythera-test/</guid><description>NAME #
+kythera-test-command - Run the artifact&amp;rsquo;s tests.
+DESCRIPTION #
+This Rust command represents the CLI arguments for the Kythera test command.
+USAGE #
+kythera test [OPTIONS] &amp;lt;Path to artifacts&amp;gt; OPTIONS #
+--verbosity, -v
+Set the verbosity level of the traces. Increase the verbosity by passing multiple times (e.g., -v, -vv, -vvv).
+Verbosity levels:
+2: Print execution traces for failing tests. 3: Print execution traces for all tests. --gas-report
+Print gas reports.</description></item><item><title>kythera snapshot</title><link>https://polyphene.github.io/kythera/docs/reference/kythera-snapshot/</link><pubDate>Mon, 22 May 2023 10:00:00 +0000</pubDate><guid>https://polyphene.github.io/kythera/docs/reference/kythera-snapshot/</guid><description>NAME #
+kythera-snapshot - Run the Kythera snapshot command.
+DESCRIPTION #
+This Rust command represents the CLI arguments for the Kythera snapshot command.
+USAGE #
+kythera snapshot [OPTIONS] &amp;lt;Path to artifacts&amp;gt; OPTIONS #
+--snap &amp;lt;FILE&amp;gt;
+Output file for the gas snapshot. (Default: .gas-snapshot)
+--diff &amp;lt;FILE&amp;gt;
+Output a diff against a pre-existing snapshot. By default, the comparison is done with .gas-snapshot.
+--check &amp;lt;FILE&amp;gt;
+Compare against a pre-existing snapshot, exiting with code 1 if they do not match.</description></item><item><title>Cheatcodes</title><link>https://polyphene.github.io/kythera/docs/reference/cheatcodes/</link><pubDate>Mon, 22 May 2023 10:00:00 +0000</pubDate><guid>https://polyphene.github.io/kythera/docs/reference/cheatcodes/</guid><description>Actor ID #
+Kythera will always deploy the cheatcode actor at the ID 98
+List #
+The following cheatcodes are exposed through the actor:
+Name Arguments Description Epoch i64 Set the NetworkContext::epoch Warp u64 Set the NetworkContext::timestamp Fee (u64, u64) Set the NetworkContext::fee ChaindId u64 Set the NetworkContext::chain_id Prank Address Sets the next implicit message&amp;rsquo;s MessageContext::caller to be the input address Trick Address Sets the next implicit message and its sub-implicit messages&amp;rsquo; MessageContext::origin to be the input address</description></item></channel></rss>
