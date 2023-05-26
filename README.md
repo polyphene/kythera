@@ -57,6 +57,14 @@ Contributions are welcome! If you'd like to contribute to Kythera, please follow
 
 Please ensure your contributions adhere to the [Contributor Covenant Code of Conduct](CODE_OF_CONDUCT.md).
 
+⚠️ **Warning**
+
+When dealing with updates over the `cheatcodes-actor` crate, it is expected that the contributor also generates the new
+artifacts to be embedded within the `kythera-actors` crate. To do so, simply run:
+```shell
+$ make generate-artifacts
+```
+
 ## License
 
 This project is licensed under a dual [MIT](LICENSE-MIT.txt) and [APACHE V2](LICENSE-APACHE.txt) licensing model.
