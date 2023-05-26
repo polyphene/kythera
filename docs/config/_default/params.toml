@@ -63,7 +63,7 @@ editPage = true
 lastMod = false
 
 [sections]
-  sectionNav = ["docs", "guides"]
+  sectionNav = ["docs", "tutorial"]
 
 [options]
   lazySizes = true
@@ -75,7 +75,7 @@ lastMod = false
   darkMode = true
   bootStrapJs = true
   breadCrumb = false
-  highLight = true
+  highLight = false
   kaTex = false
   multilingualMode = false
   docsVersioning = false
