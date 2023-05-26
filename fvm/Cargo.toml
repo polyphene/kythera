@@ -6,6 +6,7 @@ description="Core implementation of the Kythera FVM"
 homepage="https://polyphene.github.io/kythera/"
 documentation="https://polyphene.github.io/kythera/"
 repository="https://github.com/polyphene/kythera"
+license="MIT OR Apache-2.0"
 readme="README.md"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
