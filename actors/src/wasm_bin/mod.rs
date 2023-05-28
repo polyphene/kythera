@@ -13,6 +13,10 @@ macro_rules! wasm_bin {
     };
 }
 
+#[cfg(not(feature = "testing"))]
+pub const CHEATCODES_ACTOR_BINARY: &[u8] = include_bytes!("../../artifacts/Cheatcodes.wasm");
+
+#[cfg(feature = "testing")]
 pub const CHEATCODES_ACTOR_BINARY: &[u8] = include_bytes!(wasm_bin!("cheatcodes_actor"));
 
 #[cfg(feature = "testing")]
