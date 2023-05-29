@@ -12,3 +12,4 @@ The following cheatcodes are tested through the actor:
 - `Prank`: Sets the **next call**'s `NetworkContext::caller` to be the input address
 - `Trick`: Sets the **next call**'s `NetworkContext::origin` to be the input address
 - `Log`: Logs a message from the actor on Stdout
+- `Alter`: Sets the state value of a given actor to be the input IPLD block

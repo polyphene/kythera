@@ -3,8 +3,15 @@ name = "cheatcodes-actor"
 version = "0.1.0"
 edition = "2021"
 publish=false
+license="MIT OR Apache-2.0"
+description="Cheatcode actor embedded in the Kythera FVM"
+homepage="https://polyphene.github.io/kythera/"
+documentation="https://polyphene.github.io/kythera/"
+repository="https://github.com/polyphene/kythera"
+readme="README.md"
 
 [target.'cfg(target_arch = "wasm32")'.dependencies]
+cid = "0.10.1"
 frc42_dispatch = "3.1.0"
 fvm_sdk = {  version = "3.0.0" }
 fvm_shared = {  version = "3.1.0" }

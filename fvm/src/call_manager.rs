@@ -1,6 +1,8 @@
 use crate::kernel::KytheraKernel;
 use crate::machine::KytheraMachine;
-use crate::utils::{CHAIN_ID_NUM, EPOCH_NUM, FEE_NUM, LOG_NUM, PRANK_NUM, TRICK_NUM, WARP_NUM};
+use crate::utils::{
+    ALTER_NUM, CHAIN_ID_NUM, EPOCH_NUM, FEE_NUM, LOG_NUM, PRANK_NUM, TRICK_NUM, WARP_NUM,
+};
 use anyhow::anyhow;
 use cid::Cid;
 use fvm::call_manager::{CallManager, DefaultCallManager, FinishRet, InvocationResult};
@@ -168,6 +170,55 @@ where
                 })?;
 
                 log::info!(target: "kythera-fvm::actors::logging", "Actor::{from}::log: {message}");
+            }
+            ALTER_NUM => {
+                let (target, cid_str): (Address, String) = from_slice(
+                    params
+                        .ok_or(ExecutionError::Fatal(anyhow!(
+                            "No parameters provided for Alter cheatcode"
+                        )))?
+                        .data(),
+                )
+                .map_err(|err| {
+                    ExecutionError::Fatal(anyhow!(format!(
+                        "Could not deserialize parameters for Alter cheatcode: {}",
+                        err
+                    )))
+                })?;
+
+                let target_id = self
+                    .resolve_address(&target)
+                    .map_err(|err| {
+                        ExecutionError::Fatal(anyhow!(format!(
+                            "Could not resolve target actor ID for Alter cheatcode: {}",
+                            err
+                        )))
+                    })?
+                    .ok_or(ExecutionError::Fatal(anyhow!(
+                        "No actor ID associated with target for Alter cheatcode"
+                    )))?;
+
+                let mut state = self
+                    .get_actor(target_id)
+                    .map_err(|err| {
+                        ExecutionError::Fatal(anyhow!(format!(
+                            "Could not get actor at given target address for Alter cheatcode: {}",
+                            err
+                        )))
+                    })?
+                    .ok_or_else(|| {
+                        ExecutionError::Fatal(anyhow!(
+                            "No actor at target address for Alter cheatcode"
+                        ))
+                    })?;
+
+                state.state = Cid::try_from(cid_str).map_err(|err| {
+                    ExecutionError::Fatal(anyhow!(format!(
+                        "Invalid Cid passed to Alter cheatcode: {}",
+                        err
+                    )))
+                })?;
+                self.set_actor(target_id, state)?;
             }
             _ => return Err(ExecutionError::Fatal(anyhow!("Call to unknown cheatcode"))),
         }

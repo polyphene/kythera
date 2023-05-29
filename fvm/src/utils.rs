@@ -7,6 +7,7 @@ pub(crate) const CHAIN_ID_NUM: u64 = 2832802136;
 pub(crate) const PRANK_NUM: u64 = 3950310035;
 pub(crate) const TRICK_NUM: u64 = 4270775027;
 pub(crate) const LOG_NUM: u64 = 340034372;
+pub(crate) const ALTER_NUM: u64 = 3679152210;
 
 #[cfg(test)]
 mod test {
@@ -21,6 +22,7 @@ mod test {
     pub(crate) const PRANK_METHOD: &str = "Prank";
     pub(crate) const TRICK_METHOD: &str = "Trick";
     pub(crate) const LOG_METHOD: &str = "Log";
+    pub(crate) const ALTER_METHOD: &str = "Alter";
 
     #[test]
     fn test_cheatcodes_number() {
@@ -31,5 +33,6 @@ mod test {
         assert_eq!(PRANK_NUM, derive_method_num(PRANK_METHOD).unwrap());
         assert_eq!(TRICK_NUM, derive_method_num(TRICK_METHOD).unwrap());
         assert_eq!(LOG_NUM, derive_method_num(LOG_METHOD).unwrap());
+        assert_eq!(ALTER_NUM, derive_method_num(ALTER_METHOD).unwrap());
     }
 }

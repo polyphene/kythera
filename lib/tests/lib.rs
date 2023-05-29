@@ -1,6 +1,3 @@
-use std::fs::File;
-use std::io::Write;
-
 use fvm_ipld_encoding::from_slice;
 use fvm_shared::error::ExitCode;
 use kythera_actors::wasm_bin::test_actors::{
@@ -10,7 +7,6 @@ use kythera_actors::wasm_bin::test_actors::{
 use kythera_common::abi::{Abi, Method, MethodType};
 use kythera_fvm::executor::ApplyFailure::MessageBacktrace;
 use kythera_lib::error::Error;
-use kythera_lib::to_vec;
 use kythera_lib::{TestResultType, Tester, WasmActor};
 
 fn set_target_actor(tester: &mut Tester, name: String, binary: Vec<u8>, abi: Abi) {
@@ -126,7 +122,7 @@ fn test_failing_test_actor_constructor_setup() {
     let test_abi = Abi {
         constructor: Some(Method::new_from_name("Constructor").unwrap()),
         set_up: None,
-        methods: vec![Method::new_from_name("TestBuiltinsDeployed").unwrap()],
+        methods: vec![],
     };
     let constructor_test_actor =
         WasmActor::new(String::from("Constructor.t.wasm"), test_wasm_bin, test_abi);
@@ -136,7 +132,7 @@ fn test_failing_test_actor_constructor_setup() {
     let test_abi = Abi {
         constructor: None,
         set_up: Some(Method::new_from_name("Setup").unwrap()),
-        methods: vec![Method::new_from_name("TestBuiltinsDeployed").unwrap()],
+        methods: vec![],
     };
     let setup_test_actor = WasmActor::new(String::from("Setup.t.wasm"), test_wasm_bin, test_abi);
 
@@ -230,12 +226,6 @@ fn test_tester_flow() {
 
     // Set test actor
     let test_wasm_bin: Vec<u8> = Vec::from(BASIC_TEST_ACTOR_BINARY);
-    let mut file = File::create("actor3.wasm").unwrap();
-    file.write_all(&Vec::from(BASIC_TARGET_ACTOR_BINARY))
-        .unwrap();
-    let mut file = File::create("actor3.t.wasm").unwrap();
-    file.write_all(&test_wasm_bin).unwrap();
-
     let test_abi = Abi {
         constructor: Some(Method::new_from_name("Constructor").unwrap()),
         set_up: Some(Method::new_from_name("Setup").unwrap()),
@@ -247,22 +237,6 @@ fn test_tester_flow() {
             Method::new_from_name("TestFailSuccess").unwrap(),
         ],
     };
-    let mut file = File::create("actor3.cbor").unwrap();
-    file.write_all(
-        &to_vec(&Abi {
-            constructor: Some(Method::new_from_name("Constructor").unwrap()),
-            set_up: None,
-            methods: vec![
-                Method::new_from_name("HelloWorld").unwrap(),
-                Method::new_from_name("Caller").unwrap(),
-                Method::new_from_name("Origin").unwrap(),
-            ],
-        })
-        .unwrap(),
-    )
-    .unwrap();
-    let mut file = File::create("actor3.t.cbor").unwrap();
-    file.write_all(&to_vec(&test_abi).unwrap()).unwrap();
 
     let test_actor = WasmActor::new(String::from("Target.t.wasm"), test_wasm_bin, test_abi);
 
@@ -386,6 +360,11 @@ fn test_cheatcodes() {
             Method::new_from_name("TestFailDeserializationTrick").unwrap(),
             Method::new_from_name("TestFailNoParametersTrick").unwrap(),
             Method::new_from_name("TestFailAddressTypeTrick").unwrap(),
+            Method::new_from_name("TestAlter").unwrap(),
+            Method::new_from_name("TestFailDeserializationAlter").unwrap(),
+            Method::new_from_name("TestFailNoParametersAlter").unwrap(),
+            Method::new_from_name("TestFailInvalidAddressAlter").unwrap(),
+            Method::new_from_name("TestFailInvalidCidAlter").unwrap(),
         ],
     };
     let test_actor = WasmActor::new(String::from("Target.t.wasm"), test_wasm_bin, test_abi);
@@ -420,7 +399,11 @@ fn test_cheatcodes() {
                         "TestFailAddressTypePrank" => "Address parameter for Prank should have a valid ActorID",
                         "TestFailDeserializationTrick" => "Could not deserialize parameters for Trick cheatcode",
                         "TestFailNoParametersTrick" => "No parameters provided for Trick cheatcode",
-                        "TestFailAddressTypeTrick" => "Address parameter for Trick should have a valid ActorID"
+                        "TestFailAddressTypeTrick" => "Address parameter for Trick should have a valid ActorID",
+                        "TestFailDeserializationAlter" => "Could not deserialize parameters for Alter cheatcode",
+                        "TestFailNoParametersAlter" => "No parameters provided for Alter cheatcode",
+                        "TestFailInvalidAddressAlter" => "No actor ID associated with target for Alter cheatcode",
+                        "TestFailInvalidCidAlter" => "Invalid Cid passed to Alter cheatcode"
                     );
                 }
                 (MethodType::Test, TestResultType::Passed(apply_ret)) => {

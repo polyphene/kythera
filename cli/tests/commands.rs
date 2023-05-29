@@ -898,7 +898,9 @@ fn snapshot_prints_diff_less_gas_usage() {
         .collect::<Vec<_>>();
 
     let less = snapshot[0].cost as f64 * 0.8;
-    let total = (less - snapshot[0].cost as f64).round();
+
+    let total = (less - snapshot[0].cost as f64).floor();
+
     snapshot[0].cost = less as u64;
 
     let file = File::create(&path2).unwrap();
