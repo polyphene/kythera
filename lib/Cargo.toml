@@ -1,6 +1,6 @@
 [package]
 name = "kythera-lib"
-version = "0.1.0"
+version = "0.2.0"
 edition = "2021"
 description="Implementation of the Kythera testing framework"
 homepage="https://polyphene.github.io/kythera/"
@@ -37,8 +37,8 @@ fvm_ipld_car = { version = "0.6.0" }
 fvm_ipld_encoding = { version = "0.3.3" }
 fvm_shared = { version = "3.2.0", features = ["testing"] }
 
-kythera-actors = { path = "../actors", version = "0.1.0" }
-kythera-fvm = { path = "../fvm", version = "0.1.0" }
+kythera-actors = { path = "../actors", version = "0.2.0" }
+kythera-fvm = { path = "../fvm", version = "0.2.0" }
 kythera-common = { path = "../common", version = "0.1.0" }
 
 

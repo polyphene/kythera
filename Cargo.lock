@@ -505,7 +505,7 @@ checksum = "baf1de4339761588bc0619e3cbc0120ee582ebb74b53b4efbf79117bd2da40fd"
 
 [[package]]
 name = "cheatcodes-actor"
-version = "0.1.0"
+version = "0.2.0"
 dependencies = [
  "cid 0.10.1",
  "frc42_dispatch",
@@ -2379,11 +2379,11 @@ dependencies = [
 
 [[package]]
 name = "kythera-actors"
-version = "0.1.0"
+version = "0.2.0"
 
 [[package]]
 name = "kythera-cli"
-version = "0.1.0"
+version = "0.2.0"
 dependencies = [
  "anyhow",
  "assert_cmd",
@@ -2422,7 +2422,7 @@ dependencies = [
 
 [[package]]
 name = "kythera-fvm"
-version = "0.1.0"
+version = "0.2.0"
 dependencies = [
  "anyhow",
  "cid 0.8.6",
@@ -2437,7 +2437,7 @@ dependencies = [
 
 [[package]]
 name = "kythera-lib"
-version = "0.1.0"
+version = "0.2.0"
 dependencies = [
  "cid 0.8.6",
  "colored",

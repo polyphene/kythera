@@ -1,6 +1,6 @@
 [package]
 name = "kythera-cli"
-version = "0.1.0"
+version = "0.2.0"
 edition = "2021"
 license = "MIT OR Apache-2.0"
 authors = ["Polyphene <contact@polyphene.io>"]
@@ -24,7 +24,7 @@ colored = "2.0.0"
 comfy-table = "6.1.4"
 csv = "1.2.1"
 env_logger = "0.10.0"
-kythera-lib = { version = "0.1.0", path = "../lib", features = ["colors"] }
+kythera-lib = { version = "0.2.0", path = "../lib", features = ["colors"] }
 log = "0.4.17"
 optional_struct = "0.3.1"
 path-clean = "1.0.1"
