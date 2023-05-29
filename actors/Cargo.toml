@@ -6,6 +6,10 @@ edition = "2021"
 license = "MIT OR Apache-2.0"
 authors = ["Polyphene"]
 publish = false
+homepage="https://polyphene.github.io/kythera/"
+documentation="https://polyphene.github.io/kythera/"
+repository="https://github.com/polyphene/kythera"
+readme="README.md"
 
 [features]
 default=[]

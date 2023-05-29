@@ -57,21 +57,21 @@ pub struct MethodCost {
 pub fn snapshot(args: &Args) -> Result<()> {
     let methods = generate(&args.path)?;
     log::info!("\nGenerating gas snapshot");
-
     if let Some(path) = args.diff.as_ref().or(args.check.as_ref()) {
         let check = args.check.is_some();
-        let path = path.as_deref().unwrap_or_else(|| &args.path);
+        let path = path
+            .as_deref()
+            .unwrap_or_else(|| &Path::new(".gas-snapshot"));
         let equal = diff(&methods, path, check)?;
-        if dbg!(check) && !equal {
+        if check && !equal {
             std::process::exit(1)
-        } else {
-            std::process::exit(0)
         }
+        std::process::exit(0)
     }
 
     let file = File::create(&args.snap).context("Could not create snapshot file")?;
     let mut wtr = csv::Writer::from_writer(file);
-    // we need to serialze each method instead of a Vec of them for readibility.
+    // we need to serialize each method instead of a Vec of them for readability.
     // see https://github.com/BurntSushi/rust-csv/issues/221#issuecomment-767653324
     for method in methods {
         wtr.serialize(method)?;
