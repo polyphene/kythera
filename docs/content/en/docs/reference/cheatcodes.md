@@ -27,4 +27,5 @@ The following cheatcodes are exposed through the actor:
 | `ChaindId` | u64            | Set the `NetworkContext::chain_id`                                                                             |
 | `Prank`    | Address        | Sets the next implicit message's `MessageContext::caller` to be the input address                              |
 | `Trick`    | Address        | Sets the next implicit message and its sub-implicit messages' `MessageContext::origin` to be the input address |
+| `Log`      | Message        | Logs the input Message on `Stdout`                                                                             |
 | `Alter`    | (Address, CID) | Sets the state value of a given actor to be the input IPLD block                                               |

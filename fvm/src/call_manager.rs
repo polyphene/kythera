@@ -1,6 +1,8 @@
 use crate::kernel::KytheraKernel;
 use crate::machine::KytheraMachine;
-use crate::utils::{ALTER_NUM, CHAIN_ID_NUM, EPOCH_NUM, FEE_NUM, PRANK_NUM, TRICK_NUM, WARP_NUM};
+use crate::utils::{
+    ALTER_NUM, CHAIN_ID_NUM, EPOCH_NUM, FEE_NUM, LOG_NUM, PRANK_NUM, TRICK_NUM, WARP_NUM,
+};
 use anyhow::anyhow;
 use cid::Cid;
 use fvm::call_manager::{CallManager, DefaultCallManager, FinishRet, InvocationResult};
@@ -27,6 +29,7 @@ where
     fn handle_cheatcode(
         &mut self,
         method: MethodNum,
+        from: ActorID,
         params: Option<Block>,
     ) -> fvm::kernel::Result<()> {
         match method {
@@ -151,6 +154,23 @@ where
 
                 self.machine_mut().override_context.origin = Some(new_origin_id);
             }
+            LOG_NUM => {
+                let message: String = from_slice(
+                    params
+                        .ok_or(ExecutionError::Fatal(anyhow!(
+                            "No parameters provided for Log cheatcode"
+                        )))?
+                        .data(),
+                )
+                .map_err(|err| {
+                    ExecutionError::Fatal(anyhow!(format!(
+                        "Could not deserialize parameters for Log cheatcode: {}",
+                        err
+                    )))
+                })?;
+
+                log::info!(target: "kythera-fvm::actors::logging", "Actor::{from}::log: {message}");
+            }
             ALTER_NUM => {
                 let (target, cid_str): (Address, String) = from_slice(
                     params
@@ -250,7 +270,7 @@ where
     ) -> fvm::kernel::Result<InvocationResult> {
         // If cheatcode actor then we proceed as usual
         if to == Address::new_id(98) {
-            self.handle_cheatcode(method, params.clone())?;
+            self.handle_cheatcode(method, from, params.clone())?;
 
             self.0
                 .send::<KytheraKernel<K>>(from, to, method, params, value, gas_limit, read_only)

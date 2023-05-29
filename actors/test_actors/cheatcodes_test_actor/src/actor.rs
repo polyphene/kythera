@@ -119,6 +119,7 @@ fn invoke(input: u32) -> u32 {
         "TestFailNoParametersTrick" => TestFailNoParametersTrick,
         "TestFailAddressTypeTrick" => TestFailAddressTypeTrick,
         "TestTrick" => TestTrick,
+        "TestLog" => TestLog,
         "TestFailDeserializationAlter" => TestFailDeserializationAlter,
         "TestFailNoParametersAlter" => TestFailNoParametersAlter,
         "TestFailInvalidCidAlter" => TestFailInvalidCidAlter,
@@ -352,6 +353,23 @@ fn TestFailAddressTypeTrick(_input: u32) {
         SendFlags::empty(),
     )
     .unwrap();
+}
+
+// Checks Warp cheatcode happy path.
+#[allow(non_snake_case)]
+fn TestLog(_input: u32) {
+    let message = "hello from actor";
+    let res = fvm_sdk::send::send(
+        &Address::new_id(98),
+        method_hash!("Log"),
+        Some(IpldBlock::serialize(DAG_CBOR, &message).unwrap()),
+        TokenAmount::zero(),
+        None,
+        SendFlags::empty(),
+    )
+    .unwrap();
+
+    assert_eq!(res.exit_code, ExitCode::OK);
 }
 
 // Checks Alter cheatcode happy path.

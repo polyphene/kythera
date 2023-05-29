@@ -2431,6 +2431,7 @@ dependencies = [
  "fvm_ipld_encoding 0.3.3",
  "fvm_shared 3.2.0",
  "kythera-common",
+ "log",
  "multihash 0.16.3",
 ]
 
