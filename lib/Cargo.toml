@@ -1,0 +1,58 @@
+[package]
+name = "kythera-lib"
+version = "0.1.0"
+edition = "2021"
+description="Implementation of the Kythera testing framework"
+homepage="https://polyphene.github.io/kythera/"
+documentation="https://polyphene.github.io/kythera/"
+repository="https://github.com/polyphene/kythera"
+readme="README.md"
+license="MIT OR Apache-2.0"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[features]
+default = []
+# Support colors when printing test results.
+colors = ["colored"]
+
+[dependencies]
+fil_actor_account_v10 = "2.0.0"
+fil_actor_cron_v10 = "2.0.0"
+fil_actor_datacap_v10 = "2.0.0"
+fil_actor_init_v10 = "2.0.0"
+fil_actor_market_v10 = "2.0.0"
+fil_actor_miner_v10 = "2.0.0"
+fil_actor_multisig_v10 = "2.0.0"
+fil_actor_paych_v10 = "2.0.0"
+fil_actor_power_v10 = "2.0.0"
+fil_actor_reward_v10 = "2.0.0"
+fil_actor_system_v10 = "2.0.0"
+fil_actor_verifreg_v10 = "2.0.0"
+fil_actor_ethaccount_v10 = "2.0.0"
+fil_actors_runtime_v10 = "2.0.0"
+
+fvm_ipld_blockstore = { version = "0.1.1" }
+fvm_ipld_car = { version = "0.6.0" }
+fvm_ipld_encoding = { version = "0.3.3" }
+fvm_shared = { version = "3.2.0", features = ["testing"] }
+
+kythera-actors = { path = "../actors", version = "0.1.0" }
+kythera-fvm = { path = "../fvm", version = "0.1.0" }
+kythera-common = { path = "../common", version = "0.1.0" }
+
+
+cid = { version = "0.8.5", default-features = false }
+colored = { version = "2.0.0", optional = true }
+futures = { version = "0.3.26", default-features = false, features = ["executor"] }
+libsecp256k1 = "0.7.1"
+log = "0.4.17"
+rand = "0.8.5"
+rand_chacha = "0.3.1"
+rayon = "1.7.0"
+thiserror = "1.0.39"
+wasmparser = "0.103.0"
+
+[dev-dependencies.kythera-actors]
+path = "../actors"
+features = ["testing"]

@@ -2,4 +2,21 @@
 
 members = [
     "cli",
+    "lib",
+    "fvm",
+    "common",
+    "actors",
+    "actors/actors/*",
+    "actors/test_actors/*",
 ]
+
+
+[profile.wasm]
+inherits = "release"
+panic = "abort"
+overflow-checks = false
+lto = true
+opt-level = "z"
+strip = true
+codegen-units = 1
+incremental = false

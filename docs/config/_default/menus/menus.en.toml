@@ -1,13 +1,43 @@
 [[docs]]
+  name = "Getting Started"
+  weight = 100
+  identifier = "getting-started"
+  url = "/docs/getting-started/"
+
+[[docs]]
+  name = "Overview"
+  weight = 200
+  identifier = "overview"
+  url = "/docs/overview/"
+
+[[docs]]
   name = "Reference"
-  weight = 10
+  weight = 300
   identifier = "reference"
   url = "/docs/reference/"
 
+[[docs]]
+  name = "Tutorials"
+  weight = 400
+  identifier = "tutorials"
+  url = "/docs/tutorials/"
+
+[[docs]]
+  name = "Appendix"
+  weight = 300
+  identifier = "appendix"
+  url = "/docs/appendix/"
+
 [[main]]
-  name = "Docs"
-  url = "/docs/reference/introduction/"
+  name = "Documentation"
+  url = "/docs/getting-started/introduction/"
   weight = 10
+
+[[main]]
+  name = "Tutorial"
+  identifier="tutorial"
+  url = "/docs/tutorials/overview"
+  weight = 20
 
 [[social]]
   name = "GitHub"
