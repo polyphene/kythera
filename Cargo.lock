@@ -2451,7 +2451,7 @@ dependencies = [
  "rand_chacha",
  "rayon",
  "thiserror",
- "wasmparser 0.103.0",
+ "wasmparser 0.107.0",
 ]
 
 [[package]]
@@ -3960,16 +3960,6 @@ name = "wasmparser"
 version = "0.95.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "f2ea896273ea99b15132414be1da01ab0d8836415083298ecaffbe308eaac87a"
-dependencies = [
- "indexmap",
- "url",
-]
-
-[[package]]
-name = "wasmparser"
-version = "0.103.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "2c437373cac5ea84f1113d648d51f71751ffbe3d90c00ae67618cf20d0b5ee7b"
 dependencies = [
  "indexmap",
  "url",
