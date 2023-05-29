@@ -447,7 +447,7 @@ dependencies = [
 name = "builtins-test-actor"
 version = "0.1.0"
 dependencies = [
- "fil_actors_runtime_v10 1.0.0",
+ "fil_actors_runtime_v10",
  "frc42_dispatch",
  "fvm_ipld_encoding 0.3.3",
  "fvm_sdk 3.2.0",
@@ -518,7 +518,7 @@ dependencies = [
 name = "cheatcodes-test-actor"
 version = "0.1.0"
 dependencies = [
- "fil_actors_runtime_v10 1.0.0",
+ "fil_actors_runtime_v10",
  "frc42_dispatch",
  "fvm_ipld_encoding 0.3.3",
  "fvm_sdk 3.2.0",
@@ -1221,7 +1221,7 @@ version = "2.0.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "e4c79507428026979fb3d8ee8a0bbd8ac9fa0607725e8e35f851dada6f8c8cfc"
 dependencies = [
- "fil_actors_runtime_v10 2.0.0",
+ "fil_actors_runtime_v10",
  "frc42_dispatch",
  "frc46_token",
  "fvm_ipld_blockstore",
@@ -1252,7 +1252,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "ffcf06e700181f2b5654782130d385f3566bae47442ba7837ac8f4f45dba4e61"
 dependencies = [
  "cid",
- "fil_actors_runtime_v10 2.0.0",
+ "fil_actors_runtime_v10",
  "frc42_dispatch",
  "fvm_ipld_blockstore",
  "fvm_ipld_encoding 0.3.3",
@@ -1270,7 +1270,7 @@ checksum = "aff2d77c041f38c693a9f829471d4804ab7c17fcab5bd66a96e17edb3403d470"
 dependencies = [
  "cid",
  "fil_actor_verifreg_v10",
- "fil_actors_runtime_v10 2.0.0",
+ "fil_actors_runtime_v10",
  "frc42_dispatch",
  "fvm_ipld_bitfield",
  "fvm_ipld_blockstore",
@@ -1292,7 +1292,7 @@ dependencies = [
  "anyhow",
  "cid",
  "fil_actor_verifreg_v10",
- "fil_actors_runtime_v10 2.0.0",
+ "fil_actors_runtime_v10",
  "frc42_dispatch",
  "fvm_ipld_amt 0.5.1",
  "fvm_ipld_bitfield",
@@ -1315,7 +1315,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "fdae3745ebe72af89b44a63fa5b601e4956853064459f56acc5d7e20f5d4f6aa"
 dependencies = [
  "cid",
- "fil_actors_runtime_v10 2.0.0",
+ "fil_actors_runtime_v10",
  "frc42_dispatch",
  "fvm_ipld_blockstore",
  "fvm_ipld_encoding 0.3.3",
@@ -1335,7 +1335,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "ad411aa48b8274df16ce61ba0f5f7a8f499c0854a620d1968dd0480c6c3058c2"
 dependencies = [
  "cid",
- "fil_actors_runtime_v10 2.0.0",
+ "fil_actors_runtime_v10",
  "frc42_dispatch",
  "fvm_ipld_encoding 0.3.3",
  "fvm_shared 3.2.0",
@@ -1352,7 +1352,7 @@ checksum = "e7c64160b3cf23a7ad0c9183646a8642ca9798da3942b8a636cd405016584921"
 dependencies = [
  "anyhow",
  "cid",
- "fil_actors_runtime_v10 2.0.0",
+ "fil_actors_runtime_v10",
  "frc42_dispatch",
  "fvm_ipld_blockstore",
  "fvm_ipld_encoding 0.3.3",
@@ -1400,7 +1400,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "1e2908ffcc9556c8ea20b18d06451485cd79794c1e33d1368928f6098c38f3a5"
 dependencies = [
  "cid",
- "fil_actors_runtime_v10 2.0.0",
+ "fil_actors_runtime_v10",
  "frc42_dispatch",
  "fvm_ipld_blockstore",
  "fvm_ipld_encoding 0.3.3",
@@ -1408,31 +1408,6 @@ dependencies = [
  "num-derive",
  "num-traits",
  "serde",
-]
-
-[[package]]
-name = "fil_actors_runtime_v10"
-version = "1.0.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "bf58b5d04fe320d9fe29c6cb5911b4115aad9e72ee9afefa88442d1b21189989"
-dependencies = [
- "anyhow",
- "cid",
- "fvm_ipld_amt 0.5.1",
- "fvm_ipld_blockstore",
- "fvm_ipld_encoding 0.3.3",
- "fvm_ipld_hamt 0.6.1",
- "fvm_shared 3.2.0",
- "multihash",
- "num-bigint",
- "num-derive",
- "num-traits",
- "paste",
- "serde",
- "serde_repr",
- "sha2 0.10.6",
- "thiserror",
- "unsigned-varint",
 ]
 
 [[package]]
@@ -2436,7 +2411,7 @@ dependencies = [
  "fil_actor_reward_v10",
  "fil_actor_system_v10",
  "fil_actor_verifreg_v10",
- "fil_actors_runtime_v10 2.0.0",
+ "fil_actors_runtime_v10",
  "futures",
  "fvm_ipld_blockstore",
  "fvm_ipld_car",
