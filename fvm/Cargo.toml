@@ -1,6 +1,6 @@
 [package]
 name = "kythera-fvm"
-version = "0.1.0"
+version = "0.2.0"
 edition = "2021"
 description="Core implementation of the Kythera FVM"
 homepage="https://polyphene.github.io/kythera/"
@@ -20,3 +20,4 @@ fvm_shared = { version = "3.1.0" }
 multihash = { version = "0.16.1", default-features = false }
 
 kythera-common = { path = "../common", version = "0.1.0" }
+log = "0.4.17"

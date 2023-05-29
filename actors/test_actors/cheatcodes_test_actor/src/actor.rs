@@ -1,8 +1,11 @@
 // Copyright 2023 Polyphene.
 // SPDX-License-Identifier: Apache-2.0, MIT
 
+use cid::multihash::Code;
 use frc42_dispatch::{match_method, method_hash};
+use fvm_ipld_blockstore::Block;
 use fvm_ipld_encoding::ipld_block::IpldBlock;
+use fvm_ipld_encoding::tuple::{Deserialize_tuple, Serialize_tuple};
 use fvm_ipld_encoding::DAG_CBOR;
 use fvm_ipld_encoding::{de::DeserializeOwned, RawBytes};
 use fvm_sdk as sdk;
@@ -116,6 +119,12 @@ fn invoke(input: u32) -> u32 {
         "TestFailNoParametersTrick" => TestFailNoParametersTrick,
         "TestFailAddressTypeTrick" => TestFailAddressTypeTrick,
         "TestTrick" => TestTrick,
+        "TestLog" => TestLog,
+        "TestFailDeserializationAlter" => TestFailDeserializationAlter,
+        "TestFailNoParametersAlter" => TestFailNoParametersAlter,
+        "TestFailInvalidCidAlter" => TestFailInvalidCidAlter,
+        "TestFailInvalidAddressAlter" => TestFailInvalidAddressAlter,
+        "TestAlter" => TestAlter,
     }
 }
 
@@ -346,4 +355,151 @@ fn TestFailAddressTypeTrick(_input: u32) {
     .unwrap();
 }
 
-declare_tests_fail!("Warp", "Epoch", "Fee", "ChainId", "Prank", "Trick");
+// Checks Warp cheatcode happy path.
+#[allow(non_snake_case)]
+fn TestLog(_input: u32) {
+    let message = "hello from actor";
+    let res = fvm_sdk::send::send(
+        &Address::new_id(98),
+        method_hash!("Log"),
+        Some(IpldBlock::serialize(DAG_CBOR, &message).unwrap()),
+        TokenAmount::zero(),
+        None,
+        SendFlags::empty(),
+    )
+    .unwrap();
+
+    assert_eq!(res.exit_code, ExitCode::OK);
+}
+
+// Checks Alter cheatcode happy path.
+#[allow(non_snake_case)]
+fn TestAlter(input: u32) {
+    let target_actor_id: u64 = deserialize_params(input);
+
+    #[derive(Serialize_tuple)]
+    struct TargetState {
+        who_am_i: String,
+    }
+
+    let new_state = TargetState {
+        who_am_i: String::from("I am new value"),
+    };
+
+    let serialized = fvm_ipld_encoding::to_vec(&new_state).unwrap();
+    let block = Block {
+        codec: DAG_CBOR,
+        data: serialized,
+    };
+
+    let cid = fvm_sdk::ipld::put(
+        Code::Blake2b256.into(),
+        32,
+        block.codec,
+        block.data.as_ref(),
+    )
+    .unwrap();
+
+    let res = fvm_sdk::send::send(
+        &Address::new_id(98),
+        method_hash!("Alter"),
+        Some(
+            IpldBlock::serialize(
+                DAG_CBOR,
+                &(Address::new_id(target_actor_id), cid.to_string()),
+            )
+            .unwrap(),
+        ),
+        TokenAmount::zero(),
+        None,
+        SendFlags::empty(),
+    )
+    .unwrap();
+
+    assert_eq!(res.exit_code, ExitCode::OK);
+
+    let res = fvm_sdk::send::send(
+        &Address::new_id(target_actor_id),
+        method_hash!("HelloWorld"),
+        None,
+        TokenAmount::zero(),
+        None,
+        SendFlags::empty(),
+    )
+    .unwrap();
+
+    assert_eq!(res.exit_code, ExitCode::OK);
+
+    let current_state: String = RawBytes::new(
+        res.return_data
+            .expect("Should be able to get HelloWorld from target actor")
+            .data,
+    )
+    .deserialize()
+    .unwrap();
+
+    assert_eq!(new_state.who_am_i, current_state);
+}
+
+// Checks Alter with a wrong address type.
+#[allow(non_snake_case)]
+fn TestFailInvalidAddressAlter(_input: u32) {
+    let target = Address::new_actor(b"WrongType");
+
+    #[derive(Serialize_tuple, Deserialize_tuple)]
+    struct TargetState {
+        who_am_i: String,
+    }
+
+    let new_state = TargetState {
+        who_am_i: String::from("I am new value"),
+    };
+
+    let serialized = fvm_ipld_encoding::to_vec(&new_state).unwrap();
+    let block = Block {
+        codec: DAG_CBOR,
+        data: serialized,
+    };
+
+    let cid = fvm_sdk::ipld::put(
+        Code::Blake2b256.into(),
+        32,
+        block.codec,
+        block.data.as_ref(),
+    )
+    .unwrap();
+
+    fvm_sdk::send::send(
+        &Address::new_id(98),
+        method_hash!("Alter"),
+        Some(IpldBlock::serialize(DAG_CBOR, &(target, cid.to_string())).unwrap()),
+        TokenAmount::zero(),
+        None,
+        SendFlags::empty(),
+    )
+    .unwrap();
+}
+
+// Checks Alter with a wrong cid value.
+#[allow(non_snake_case)]
+fn TestFailInvalidCidAlter(input: u32) {
+    let target_actor_id: u64 = deserialize_params(input);
+
+    fvm_sdk::send::send(
+        &Address::new_id(98),
+        method_hash!("Alter"),
+        Some(
+            IpldBlock::serialize(
+                DAG_CBOR,
+                &(Address::new_id(target_actor_id), String::from("azertyuiop")),
+            )
+            .unwrap(),
+        ),
+        TokenAmount::zero(),
+        None,
+        SendFlags::empty(),
+    )
+    .unwrap();
+}
+
+declare_tests_fail!("Warp", "Epoch", "Fee", "ChainId", "Prank", "Trick", "Alter");

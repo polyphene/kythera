@@ -158,8 +158,7 @@ impl GasReport {
                     if calls.is_empty() {
                         0f64
                     } else {
-                        calls.iter().copied().fold(0, |sum, val| sum + val) as f64
-                            / calls.len() as f64
+                        calls.iter().copied().sum::<u64>() as f64 / calls.len() as f64
                     }
                 };
 

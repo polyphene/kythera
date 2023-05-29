@@ -360,6 +360,11 @@ fn test_cheatcodes() {
             Method::new_from_name("TestFailDeserializationTrick").unwrap(),
             Method::new_from_name("TestFailNoParametersTrick").unwrap(),
             Method::new_from_name("TestFailAddressTypeTrick").unwrap(),
+            Method::new_from_name("TestAlter").unwrap(),
+            Method::new_from_name("TestFailDeserializationAlter").unwrap(),
+            Method::new_from_name("TestFailNoParametersAlter").unwrap(),
+            Method::new_from_name("TestFailInvalidAddressAlter").unwrap(),
+            Method::new_from_name("TestFailInvalidCidAlter").unwrap(),
         ],
     };
     let test_actor = WasmActor::new(String::from("Target.t.wasm"), test_wasm_bin, test_abi);
@@ -394,7 +399,11 @@ fn test_cheatcodes() {
                         "TestFailAddressTypePrank" => "Address parameter for Prank should have a valid ActorID",
                         "TestFailDeserializationTrick" => "Could not deserialize parameters for Trick cheatcode",
                         "TestFailNoParametersTrick" => "No parameters provided for Trick cheatcode",
-                        "TestFailAddressTypeTrick" => "Address parameter for Trick should have a valid ActorID"
+                        "TestFailAddressTypeTrick" => "Address parameter for Trick should have a valid ActorID",
+                        "TestFailDeserializationAlter" => "Could not deserialize parameters for Alter cheatcode",
+                        "TestFailNoParametersAlter" => "No parameters provided for Alter cheatcode",
+                        "TestFailInvalidAddressAlter" => "No actor ID associated with target for Alter cheatcode",
+                        "TestFailInvalidCidAlter" => "Invalid Cid passed to Alter cheatcode"
                     );
                 }
                 (MethodType::Test, TestResultType::Passed(apply_ret)) => {

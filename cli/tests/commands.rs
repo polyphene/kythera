@@ -1,7 +1,9 @@
 use std::{fs::File, io::Write};
 
 use assert_cmd::Command;
-use kythera_actors::wasm_bin::test_actors::{BASIC_TARGET_ACTOR_BINARY, BASIC_TEST_ACTOR_BINARY};
+use kythera_actors::wasm_bin::test_actors::{
+    BASIC_TARGET_ACTOR_BINARY, BASIC_TEST_ACTOR_BINARY, CHEATCODES_TEST_ACTOR_BINARY,
+};
 use kythera_cli::commands::gas_snapshot::MethodCost;
 use kythera_lib::{to_vec, Abi, Method};
 use predicates::str::contains;
@@ -921,4 +923,44 @@ fn snapshot_prints_diff_less_gas_usage() {
         "Target.wasm::TestMethodParameter: gas used is 20% less",
     ))
     .stdout(contains(format!("Total gas dif: {total}")));
+}
+
+#[test]
+fn outputs_log_cheatcode() {
+    let dir = tempdir().unwrap();
+    create_target_and_test_actors(
+        &dir,
+        &[
+            Vec::from(BASIC_TARGET_ACTOR_BINARY),
+            Vec::from(CHEATCODES_TEST_ACTOR_BINARY),
+        ],
+        &[
+            (
+                "Target",
+                Abi {
+                    constructor: Some(Method::new_from_name("Constructor").unwrap()),
+                    set_up: None,
+                    methods: vec![
+                        Method::new_from_name("HelloWorld").unwrap(),
+                        Method::new_from_name("Caller").unwrap(),
+                        Method::new_from_name("Origin").unwrap(),
+                    ],
+                },
+            ),
+            (
+                "Target.t",
+                Abi {
+                    constructor: None,
+                    set_up: None,
+                    methods: vec![Method::new_from_name("TestLog").unwrap()],
+                },
+            ),
+        ],
+    );
+
+    let mut cmd = Command::cargo_bin("kythera").unwrap();
+    cmd.args(["test", &dir.path().to_str().unwrap()])
+        .assert()
+        .success()
+        .stdout(contains("hello from actor"));
 }

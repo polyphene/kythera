@@ -59,9 +59,11 @@ pub fn snapshot(args: &Args) -> Result<()> {
     log::info!("\nGenerating gas snapshot");
     if let Some(path) = args.diff.as_ref().or(args.check.as_ref()) {
         let check = args.check.is_some();
+
         let path = path
             .as_deref()
             .unwrap_or_else(|| &Path::new(".gas-snapshot"));
+
         let equal = diff(&methods, path, check)?;
         if check && !equal {
             std::process::exit(1)
@@ -90,7 +92,6 @@ fn diff(methods: &[MethodCost], path: &Path, check: bool) -> Result<bool> {
     let mut rdr = csv::Reader::from_reader(file);
     let former = rdr
         .deserialize::<MethodCost>()
-        .into_iter()
         .filter_map(|r| r.ok())
         .map(|c| (c.name.clone(), c))
         .collect::<HashMap<_, _>>();

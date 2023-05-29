@@ -1,6 +1,7 @@
 // Copyright 2023 Polyphene.
 // SPDX-License-Identifier: Apache-2.0, MIT
 
+use cid::Cid;
 use frc42_dispatch::match_method;
 use fvm_ipld_encoding::{de::DeserializeOwned, RawBytes};
 use fvm_sdk::NO_DATA_BLOCK_ID;
@@ -79,6 +80,24 @@ fn invoke(input: u32) -> u32 {
 
                 NO_DATA_BLOCK_ID
             },
+            "Log" => {
+                let message: String = deserialize_params(input);
+
+                Log(message);
+
+                NO_DATA_BLOCK_ID
+
+            }
+            "Alter" => {
+                // Ensure that the message params can be deserialized.
+                let (address, cid_str): (Address, String) = deserialize_params(input);
+
+                let cid = Cid::try_from(cid_str).expect("Invalid Cid passed to Alter cheatcode");
+
+                Alter(address, cid);
+
+                NO_DATA_BLOCK_ID
+            },
             _ => {
                 fvm_sdk::vm::abort(
                     ExitCode::USR_UNHANDLED_MESSAGE.value(),
@@ -112,3 +131,11 @@ fn Prank(_new_caller: Address) {}
 /// Trick the call manager to set a pre-determined origin for the next message sent.
 #[allow(non_snake_case)]
 fn Trick(_new_origin: Address) {}
+
+/// Log a message from the test actor on Stdout.
+#[allow(non_snake_case)]
+fn Log(_message: String) {}
+
+/// Alter the state of a given actor to a new value.
+#[allow(non_snake_case)]
+fn Alter(_target: Address, _cid: Cid) {}
