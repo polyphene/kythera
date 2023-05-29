@@ -20,14 +20,6 @@ fn invoke(_input: u32) -> u32 {
                 Setup();
                 NO_DATA_BLOCK_ID
             },
-            "TestSuccess" => {
-                TestSuccess();
-                NO_DATA_BLOCK_ID
-            },
-            "TestFailSuccess" => {
-                TestFailSuccess();
-                NO_DATA_BLOCK_ID
-            },
             _ => {
                 sdk::vm::abort(
                     ExitCode::USR_UNHANDLED_MESSAGE.value(),
@@ -46,14 +38,4 @@ fn Constructor() {
 #[allow(non_snake_case)]
 fn Setup() {
     panic!("Setup fails")
-}
-
-#[allow(non_snake_case)]
-fn TestSuccess() {
-    assert_eq!(1 + 1, 1)
-}
-
-#[allow(non_snake_case)]
-fn TestFailSuccess() {
-    panic!("Nice, it fails!")
 }

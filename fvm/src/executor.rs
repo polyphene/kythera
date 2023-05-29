@@ -89,7 +89,10 @@ impl KytheraExecutor {
             method_num,
             params: self.target_actor_id.clone(),
             sequence,
-            ..Message::default()
+            version: 0,
+            value: TokenAmount::default(),
+            gas_fee_cap: TokenAmount::default(),
+            gas_premium: TokenAmount::default(),
         };
 
         self.inner
