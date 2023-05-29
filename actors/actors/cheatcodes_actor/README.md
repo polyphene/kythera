@@ -12,3 +12,5 @@ The following cheatcodes are exposed through the actor:
 - `Prank`: Sets the **next implicit message**'s `MessageContext::caller` to be the input address
 - `Trick`: Sets the **next implicit message and its sub-implicit messages**' `MessageContext::origin` to be the input address
 - `Alter`: Sets the state value of a given actor to be the input IPLD block
+
+More information available on the [Cheatcodes reference](https://polyphene.github.io/kythera/docs/reference/cheatcodes/) documentation.

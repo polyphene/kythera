@@ -30,6 +30,7 @@ use fvm_shared::sector::StoragePower;
 use kythera_actors::wasm_bin::CHEATCODES_ACTOR_BINARY;
 use kythera_common::abi::Abi;
 
+const BUNDLE_CAR: &[u8] = include_bytes!("../assets/builtin-actors-butterflynet.car");
 const STATE_TREE_VERSION: StateTreeVersion = StateTreeVersion::V5;
 
 /// Built-in Actors that are deployed to the testing `StateTree`.
@@ -108,10 +109,9 @@ impl StateTree {
     /// And activate them on the `StateTree`.
     pub fn load_builtin_actors(&mut self) -> BuiltInActors {
         // Load the built-in Actors
-        let builtin_actors = block_on(async {
-            load_car_unchecked(self.inner.store(), actors_v10::BUNDLE_CAR).await
-        })
-        .expect("Should be able to import built-in Actors")[0];
+        let builtin_actors =
+            block_on(async { load_car_unchecked(self.inner.store(), BUNDLE_CAR).await })
+                .expect("Should be able to import built-in Actors")[0];
 
         let (version, root) = self
             .inner
