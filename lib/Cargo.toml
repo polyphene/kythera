@@ -7,6 +7,8 @@ homepage="https://polyphene.github.io/kythera/"
 documentation="https://polyphene.github.io/kythera/"
 repository="https://github.com/polyphene/kythera"
 readme="README.md"
+license="MIT OR Apache-2.0"
+
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [features]
