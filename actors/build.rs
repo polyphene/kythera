@@ -45,7 +45,7 @@ mod testing {
             println!("cargo:rerun-if-changed={}", file);
         }
 
-        let mut actors = [ACTORS, TEST_ACTORS].concat();
+        let actors = [ACTORS, TEST_ACTORS].concat();
 
         // Cargo build command for all test_actors at once.
         let mut cmd = Command::new(cargo);
