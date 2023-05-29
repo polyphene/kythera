@@ -27,3 +27,6 @@ The following cheatcodes are exposed through the actor:
 | `ChaindId` | u64        | Set the `NetworkContext::chain_id`                                                                             |
 | `Prank`    | Address    | Sets the next implicit message's `MessageContext::caller` to be the input address                              |
 | `Trick`    | Address    | Sets the next implicit message and its sub-implicit messages' `MessageContext::origin` to be the input address |
+
+
+For more information check the cheatcodes table [here](https://github.com/polyphene/kythera/blob/main/docs/content/en/docs/reference/cheatcodes.md)
