@@ -2,11 +2,9 @@
 The ambition is to become the core boilerplate for any native projects developed in any FVM supported languages. its goal is to ease testing of native actors at the Wasm level, deploy the actors on any FVM-compatible network and interact with them.
 Sections #
 Getting started
-To get started with Kythera, install Kythera and setup your first project.</description></item><item><title>Installation</title><link>https://polyphene.github.io/kythera/docs/getting-started/installation/</link><pubDate>Mon, 22 May 2023 10:00:00 +0000</pubDate><guid>https://polyphene.github.io/kythera/docs/getting-started/installation/</guid><description>Precompiled binaries #
-Precompiled binaries are available from the Github release page.
-Building from source #
+To get started with Kythera, install Kythera and setup your first project.</description></item><item><title>Installation</title><link>https://polyphene.github.io/kythera/docs/getting-started/installation/</link><pubDate>Mon, 22 May 2023 10:00:00 +0000</pubDate><guid>https://polyphene.github.io/kythera/docs/getting-started/installation/</guid><description>Building from source #
 You can build Kythera binary directly from our main repository through cargo:
-$ cargo install --git https://github.com/polyphene/kythera --force kythera</description></item><item><title>First Steps with Kythera</title><link>https://polyphene.github.io/kythera/docs/getting-started/first-steps/</link><pubDate>Mon, 22 May 2023 10:00:00 +0000</pubDate><guid>https://polyphene.github.io/kythera/docs/getting-started/first-steps/</guid><description>This section provide a quick example of how to use the kythera command line tool. We demonstrate how to start up a Rust-based native actors project, compile and test it.
+$ cargo install --git https://github.com/polyphene/kythera --force kythera-cli</description></item><item><title>First Steps with Kythera</title><link>https://polyphene.github.io/kythera/docs/getting-started/first-steps/</link><pubDate>Mon, 22 May 2023 10:00:00 +0000</pubDate><guid>https://polyphene.github.io/kythera/docs/getting-started/first-steps/</guid><description>This section provide a quick example of how to use the kythera command line tool. We demonstrate how to start up a Rust-based native actors project, compile and test it.
 🗒️ Note
 Future base project for Assembly Script and Golang will soon be created to assist developers more familiar with those languages.
 To start the development clone our dedicated Rust template:

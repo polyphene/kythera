@@ -12,11 +12,9 @@ Tutorials on building actors with Kythera.
 Use Kythera over a Rust-base native actors project Contributing
 Help us improve Kythera by contributing
 Reference
-Test command Snapshot command Cheatcodes `}),e.add({id:2,href:"/kythera/docs/getting-started/installation/",title:"Installation",description:`Precompiled binaries #Precompiled binaries are available from the Github release page.
-Building from source #You can build Kythera binary directly from our main repository through cargo:
-\$ cargo install --git https://github.com/polyphene/kythera --force kythera `,content:`Precompiled binaries #Precompiled binaries are available from the Github release page.
-Building from source #You can build Kythera binary directly from our main repository through cargo:
-\$ cargo install --git https://github.com/polyphene/kythera --force kythera `}),e.add({id:3,href:"/kythera/docs/getting-started/first-steps/",title:"First Steps with Kythera",description:`This section provide a quick example of how to use the kythera command line tool. We demonstrate how to start up a Rust-based native actors project, compile and test it.
+Test command Snapshot command Cheatcodes `}),e.add({id:2,href:"/kythera/docs/getting-started/installation/",title:"Installation",description:`Building from source #You can build Kythera binary directly from our main repository through cargo:
+\$ cargo install --git https://github.com/polyphene/kythera --force kythera-cli `,content:`Building from source #You can build Kythera binary directly from our main repository through cargo:
+\$ cargo install --git https://github.com/polyphene/kythera --force kythera-cli `}),e.add({id:3,href:"/kythera/docs/getting-started/first-steps/",title:"First Steps with Kythera",description:`This section provide a quick example of how to use the kythera command line tool. We demonstrate how to start up a Rust-based native actors project, compile and test it.
 🗒️ Note
 Future base project for Assembly Script and Golang will soon be created to assist developers more familiar with those languages.
 To start the development clone our dedicated Rust template:
