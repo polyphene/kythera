@@ -19,7 +19,7 @@ path = "src/main.rs"
 
 [dependencies]
 anyhow = "1.0.70"
-clap = { version = "4.1.11", features = ["derive"] }
+clap = { version = "4.3.1", features = ["derive"] }
 colored = "2.0.0"
 comfy-table = "6.1.4"
 csv = "1.2.1"
