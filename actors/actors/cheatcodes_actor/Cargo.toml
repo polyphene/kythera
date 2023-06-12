@@ -16,7 +16,7 @@ frc42_dispatch = "3.1.0"
 fvm_sdk = {  version = "3.0.0" }
 fvm_shared = {  version = "3.1.0" }
 fvm_ipld_encoding = {  version = "0.3.3" }
-serde = { version = "1.0.136", features = ["derive"] }
+serde = { version = "1.0.164", features = ["derive"] }
 
 [lib]
 crate-type = ["cdylib"]

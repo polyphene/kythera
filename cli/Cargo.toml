@@ -28,7 +28,7 @@ kythera-lib = { version = "0.2.0", path = "../lib", features = ["colors"] }
 log = "0.4.17"
 optional_struct = "0.3.1"
 path-clean = "1.0.1"
-serde = { version = "1.0.158", features = ["derive"] }
+serde = { version = "1.0.164", features = ["derive"] }
 serde_yaml = "0.9.19"
 thiserror = "1.0.40"
 walkdir = "2.3.3"
