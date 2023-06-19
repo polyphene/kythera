@@ -839,9 +839,9 @@ fn snapshot_prints_diff_more_gas_usage() {
     .assert()
     .success()
     .stdout(contains(
-        "Target.wasm::TestMethodParameter: gas used is 20% more",
+        "Target.wasm::TestMethodParameter: gas used is 17% less",
     ))
-    .stdout(contains(format!("Total gas dif: {total}")));
+    .stdout(contains(format!("Total gas diff: {total}")));
 }
 
 #[test]
@@ -920,9 +920,9 @@ fn snapshot_prints_diff_less_gas_usage() {
     .assert()
     .success()
     .stdout(contains(
-        "Target.wasm::TestMethodParameter: gas used is 20% less",
+        "Target.wasm::TestMethodParameter: gas used is 25% more",
     ))
-    .stdout(contains(format!("Total gas dif: {total}")));
+    .stdout(contains(format!("Total gas diff: {total}")));
 }
 
 #[test]
