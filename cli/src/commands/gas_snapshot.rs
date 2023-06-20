@@ -87,7 +87,6 @@ pub fn snapshot(args: &Args) -> Result<()> {
 /// provided in the input path. If `check` is true prints the methods not present in the gas snapshot.
 /// Returns true if the the inputs are the same.
 fn diff(methods: &[MethodCost], path: &Path, check: bool) -> Result<bool> {
-    let mut equal = true;
     let file = File::open(path).context("Could not open diff file")?;
     let mut rdr = csv::Reader::from_reader(file);
     let former = rdr
@@ -102,17 +101,32 @@ fn diff(methods: &[MethodCost], path: &Path, check: bool) -> Result<bool> {
             (Some(c), _) => {
                 let new = method.cost;
                 let old = c.cost;
-                match new.cmp(&old) {
+                match old.cmp(&new) {
                     std::cmp::Ordering::Equal => {
                         log::info!("{}: gas used is the same: {}", method.name, new);
                     }
                     std::cmp::Ordering::Less => {
-                        let more = ((old - new) as f64 / new as f64 * 100.0).round();
-                        log::info!("{}: gas used is {}% more", method.name, more);
+                        let mut more = (new - old) as f64 / old as f64 * 100.0;
+                        if more >= 1 as f64 {
+                            more = more.round() as f64;
+                        }
+                        log::info!(
+                            "{}: gas used is {}% more ( {new} > {old} )",
+                            method.name,
+                            more
+                        );
                     }
                     std::cmp::Ordering::Greater => {
-                        let less = ((new - old) as f64 / new as f64 * 100.0).round();
-                        log::info!("{}: gas used is {}% less", method.name, less);
+                        let mut less = (old - new) as f64 / old as f64 * 100.0;
+                        if less >= 1 as f64 {
+                            less = less.round() as f64;
+                        }
+
+                        log::info!(
+                            "{}: gas used is {}% less ( {new} < {old} )",
+                            method.name,
+                            less
+                        );
                     }
                 }
 
@@ -125,13 +139,13 @@ fn diff(methods: &[MethodCost], path: &Path, check: bool) -> Result<bool> {
                 )
                 .red();
                 log::error!("{}", message);
-                equal = false;
+                return Ok(false);
             }
             (None, false) => {}
         }
     }
-    log::info!("Total gas dif: {total}");
-    Ok(equal)
+    log::info!("Total gas diff: {total}");
+    Ok(total == 0)
 }
 
 /// Generate on the provided path a csv with the gas cost of the list of [`TestResult`]s.
