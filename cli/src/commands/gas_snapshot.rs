@@ -110,7 +110,11 @@ fn diff(methods: &[MethodCost], path: &Path, check: bool) -> Result<bool> {
                         if more >= 1 as f64 {
                             more = more.round() as f64;
                         }
-                        log::info!("{}: gas used is {}% more: {new}", method.name, more);
+                        log::info!(
+                            "{}: gas used is {}% more ( {new} > {old} )",
+                            method.name,
+                            more
+                        );
                     }
                     std::cmp::Ordering::Greater => {
                         let mut less = (old - new) as f64 / old as f64 * 100.0;
@@ -118,7 +122,11 @@ fn diff(methods: &[MethodCost], path: &Path, check: bool) -> Result<bool> {
                             less = less.round() as f64;
                         }
 
-                        log::info!("{}: gas used is {}% less: {new}", method.name, less);
+                        log::info!(
+                            "{}: gas used is {}% less ( {new} < {old} )",
+                            method.name,
+                            less
+                        );
                     }
                 }
 
