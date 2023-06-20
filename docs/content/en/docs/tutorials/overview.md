@@ -26,4 +26,4 @@ Base Rust tutorial to assist any Rust developer in starting a project from scrat
 > 🚀 **Contributing**
 >
 > If you are a developer, and you want to help us set in place tutorials that feel relevant, feel free to refer to our 
-> [contributing section]() to set it up! 
+> [contributing section](/docs/appendix/contributing/) to set it up! 
