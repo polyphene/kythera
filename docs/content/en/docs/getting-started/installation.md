@@ -17,3 +17,19 @@ You can build Kythera binary directly from our main repository through `cargo`:
 ```shell
 $ cargo install --git https://github.com/polyphene/kythera --force kythera-cli
 ```
+
+## Local project
+
+You can build Kythera binary through a local clone of the project.
+
+First, clone the repository:
+```shell
+$ git clone https://github.com/polyphene/kythera.git
+```
+
+Then, run:
+```shell
+$ cargo build --bin kythera
+```
+
+The Kythera binary should now be accessible at the root of the project.

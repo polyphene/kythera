@@ -85,7 +85,7 @@ fn outputs_single_passed_tests() {
     );
 
     let mut cmd = Command::cargo_bin("kythera").unwrap();
-    cmd.args(["test", &dir.path().to_str().unwrap()])
+    cmd.args(["test", "--path", &dir.path().to_str().unwrap()])
         .assert()
         .success()
         .stdout(contains("\tRunning Tests for Actor : Target.wasm"))
@@ -138,7 +138,7 @@ fn outputs_single_tests_failed() {
     );
 
     let mut cmd = Command::cargo_bin("kythera").unwrap();
-    cmd.args(["test", &dir.path().to_str().unwrap()])
+    cmd.args(["test", "--path", &dir.path().to_str().unwrap()])
         .assert()
         .success()
         .stdout(contains("\tRunning Tests for Actor : Target.wasm"))
@@ -207,7 +207,7 @@ fn outputs_single_error_target_file() {
     );
 
     let mut cmd = Command::cargo_bin("kythera").unwrap();
-    cmd.args(["test", &dir.path().to_str().unwrap()])
+    cmd.args(["test", "--path", &dir.path().to_str().unwrap()])
         .assert().success()
         .stdout(contains("\tRunning Tests for Actor : Target.wasm"))
         .stdout(contains(
@@ -256,7 +256,7 @@ fn outputs_single_error_test_file() {
     );
 
     let mut cmd = Command::cargo_bin("kythera").unwrap();
-    cmd.args(["test", &dir.path().to_str().unwrap()])
+    cmd.args(["test", "--path", &dir.path().to_str().unwrap()])
         .assert().success()
         .stdout(contains("\tRunning Tests for Actor : Target.wasm"))
         .stdout(contains("\t\tTesting 1 test files"))
@@ -334,7 +334,7 @@ fn outputs_multiple_passed_tests() {
     );
 
     let mut cmd = Command::cargo_bin("kythera").unwrap();
-    cmd.args(["test", &dir.path().to_str().unwrap()])
+    cmd.args(["test", "--path", &dir.path().to_str().unwrap()])
         .assert()
         .success()
         .stdout(contains("\tRunning Tests for Actor : FirstTarget.wasm"))
@@ -422,7 +422,7 @@ fn outputs_multiple_failed_tests() {
     );
 
     let mut cmd = Command::cargo_bin("kythera").unwrap();
-    cmd.args(["test", &dir.path().to_str().unwrap()])
+    cmd.args(["test", "--path", &dir.path().to_str().unwrap()])
         .assert()
         .success()
         .stdout(contains("\tRunning Tests for Actor : FirstTarget.wasm"))
@@ -520,30 +520,35 @@ fn outputs_gas_report() {
     );
 
     let mut cmd = Command::cargo_bin("kythera").unwrap();
-    cmd.args(["test", &dir.path().to_str().unwrap(), "--gas-report"])
-        .assert()
-        .success()
-        .stdout(contains("Gas report"))
-        .stdout(contains(
-            "╭──────────────────────┬───────────┬───────────┬───────────┬───────────┬─────────╮",
-        ))
-        .stdout(contains(
-            "│ Target.wasm contract ┆           ┆           ┆           ┆           ┆         │",
-        ))
-        .stdout(contains(
-            "╞══════════════════════╪═══════════╪═══════════╪═══════════╪═══════════╪═════════╡",
-        ))
-        .stdout(contains(
-            "│ Function Name        ┆ min       ┆ max       ┆ avg       ┆ median    ┆ # calls │",
-        ))
-        .stdout(contains(
-            "├╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌┤",
-        ))
-        .stdout(contains("│ Constructor"))
-        .stdout(contains("│ HelloWorld"))
-        .stdout(contains(
-            "╰──────────────────────┴───────────┴───────────┴───────────┴───────────┴─────────╯",
-        ));
+    cmd.args([
+        "test",
+        "--path",
+        &dir.path().to_str().unwrap(),
+        "--gas-report",
+    ])
+    .assert()
+    .success()
+    .stdout(contains("Gas report"))
+    .stdout(contains(
+        "╭──────────────────────┬───────────┬───────────┬───────────┬───────────┬─────────╮",
+    ))
+    .stdout(contains(
+        "│ Target.wasm contract ┆           ┆           ┆           ┆           ┆         │",
+    ))
+    .stdout(contains(
+        "╞══════════════════════╪═══════════╪═══════════╪═══════════╪═══════════╪═════════╡",
+    ))
+    .stdout(contains(
+        "│ Function Name        ┆ min       ┆ max       ┆ avg       ┆ median    ┆ # calls │",
+    ))
+    .stdout(contains(
+        "├╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌┤",
+    ))
+    .stdout(contains("│ Constructor"))
+    .stdout(contains("│ HelloWorld"))
+    .stdout(contains(
+        "╰──────────────────────┴───────────┴───────────┴───────────┴───────────┴─────────╯",
+    ));
 }
 
 #[test]
@@ -583,6 +588,7 @@ fn creates_gas_snapshot() {
     let path = dir.path().join(".gas-snapshot");
     cmd.args([
         "snapshot",
+        "--path",
         &dir.path().to_str().unwrap(),
         "--snap",
         path.to_str().unwrap(),
@@ -640,6 +646,7 @@ fn snapshot_check_success() {
 
     cmd.args([
         "snapshot",
+        "--path",
         &dir.path().to_str().unwrap(),
         "--snap",
         path.to_str().unwrap(),
@@ -650,6 +657,7 @@ fn snapshot_check_success() {
     cmd = Command::cargo_bin("kythera").unwrap();
     cmd.args([
         "snapshot",
+        "--path",
         &dir.path().to_str().unwrap(),
         "--check",
         path.to_str().unwrap(),
@@ -696,6 +704,7 @@ fn snapshot_check_fails_differences() {
     let _file = File::create(&path2).unwrap();
     cmd.args([
         "snapshot",
+        "--path", 
         &dir.path().to_str().unwrap(),
         "--check",
         path2.to_str().unwrap(),
@@ -744,6 +753,7 @@ fn snapshpt_prints_diff_same_gas_usage() {
     let path = dir.path().join(".gas-snapshot");
     cmd.args([
         "snapshot",
+        "--path",
         &dir.path().to_str().unwrap(),
         "--snap",
         path.to_str().unwrap(),
@@ -754,6 +764,7 @@ fn snapshpt_prints_diff_same_gas_usage() {
     cmd = Command::cargo_bin("kythera").unwrap();
     cmd.args([
         "snapshot",
+        "--path",
         &dir.path().to_str().unwrap(),
         "--diff",
         path.to_str().unwrap(),
@@ -803,6 +814,7 @@ fn snapshot_prints_diff_more_gas_usage() {
     let path2 = dir.path().join(".gas-snapshot2");
     cmd.args([
         "snapshot",
+        "--path",
         &dir.path().to_str().unwrap(),
         "--snap",
         path.to_str().unwrap(),
@@ -832,6 +844,7 @@ fn snapshot_prints_diff_more_gas_usage() {
     cmd = Command::cargo_bin("kythera").unwrap();
     cmd.args([
         "snapshot",
+        "--path",
         &dir.path().to_str().unwrap(),
         "--diff",
         path2.to_str().unwrap(),
@@ -882,6 +895,7 @@ fn snapshot_prints_diff_less_gas_usage() {
     let path2 = dir.path().join(".gas-snapshot2");
     cmd.args([
         "snapshot",
+        "--path",
         &dir.path().to_str().unwrap(),
         "--snap",
         path.to_str().unwrap(),
@@ -913,6 +927,7 @@ fn snapshot_prints_diff_less_gas_usage() {
     cmd = Command::cargo_bin("kythera").unwrap();
     cmd.args([
         "snapshot",
+        "--path",
         &dir.path().to_str().unwrap(),
         "--diff",
         path2.to_str().unwrap(),
@@ -959,7 +974,7 @@ fn outputs_log_cheatcode() {
     );
 
     let mut cmd = Command::cargo_bin("kythera").unwrap();
-    cmd.args(["test", &dir.path().to_str().unwrap()])
+    cmd.args(["test", "--path", &dir.path().to_str().unwrap()])
         .assert()
         .success()
         .stdout(contains("hello from actor"));

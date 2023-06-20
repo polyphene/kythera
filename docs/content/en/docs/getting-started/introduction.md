@@ -34,7 +34,7 @@ smart contracts.
 
 Tutorials on building actors with Kythera.
 
-- [Use Kythera over a Rust-base native actors project](/docs/tutorials/overview/)
+- [Use Kythera over a Rust-base native actors project](/docs/tutorials/rust/requirements/)
 
 **Contributing**
 

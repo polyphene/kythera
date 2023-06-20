@@ -18,33 +18,9 @@ In this final step of our basic Rust tutorial we will go over the creation of te
 
 ## Configuring the test actor crate
 
-As we configured our `basic-actor` crate, we need to configure a `basic-actor-test` crate. To do, we will copy the `hello-world-test`
-crate:
-```shell
-$ cp -r tests/hello-world-test/ tests/basic-actor-test
-```
+If we move to the `tests` folder from the root of the repository, we can see that a `basic-actor-test` has been created.
 
-Then, update its crate name:
-```toml
-[package]
-name = "basic-actor-test"
-version = "0.1.0"
-edition = "2021"
-
-[target.'cfg(target_arch = "wasm32")'.dependencies]
-cid = { version = "0.8.5", default-features = false }
-frc42_dispatch = "3.1.0"
-fvm_sdk = {  version = "3.0.0" }
-fvm_shared = {  version = "3.1.0" }
-fvm_ipld_blockstore = "0.1.1"
-fvm_ipld_encoding = {  version = "0.3.3" }
-serde = { version = "1.0.136", features = ["derive"] }
-serde_tuple = { version = "0.5.0" }
-thiserror = { version = "1.0.31" }
-
-[lib]
-crate-type = ["cdylib"]
-```
+This is the crate that we will use to write test for our `basic-actor`.
 
 ## Test Actor's development
 
@@ -60,42 +36,10 @@ dedicated method can be added, `Setup()`. This setup method is called before eac
 
 ### Test method: TestAdd
 
-Before starting to code our two test methods, we need to ensure that we clean the `invoke()` method and the leftover methods
-from `hello-world-test`. We also won't be needing `Constructor()`, `Setup()` or a dedicated `ActorState` in this tutorial.
-```rust
-// ...
-
-#[no_mangle]
-fn invoke(input: u32) -> u32 {
-    std::panic::set_hook(Box::new(|info| {
-        fvm_sdk::vm::exit(
-            ExitCode::USR_ASSERTION_FAILED.value(),
-            None,
-            Some(&format!("{info}")),
-        )
-    }));
-
-    let method_num = fvm_sdk::message::method_number();
-    match_method!(
-        method_num,
-        {
-            _ => {
-                fvm_sdk::vm::abort(
-                    ExitCode::USR_UNHANDLED_MESSAGE.value(),
-                    Some("Unknown method number"),
-                );
-            }
-        }
-    )
-}
-```
-
-We can now add our `TestAdd()` method to assert that our native actor works properly. To send a message to it, we can
+We can add our `TestAdd()` method to assert that our native actor works properly. To send a message to it, we can
 leverage the argument passed in message sent to our test actor. It contains the actor ID at which the actor was deployed.
 
 ```rust
-use fvm_ipld_encoding::ipld_block::IpldBlock;
-
 // ...
 
 #[no_mangle]
@@ -130,7 +74,7 @@ fn invoke(input: u32) -> u32 {
 #[allow(non_snake_case)]
 fn TestAdd(input: u32) {
     // Get basic actor ID.
-    let basic_actor_id: u64 = deserialize_params(input);
+    let basic_actor_id: u64 = crate::utils::deserialize_params(input);
 
     // Value to add to state.
     let to_add = 10000u64;

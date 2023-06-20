@@ -1,6 +1,8 @@
 mod gas_report;
 
+use crate::commands::ARTIFACTS_DIR;
 use crate::utils::search::search_files;
+use clap::builder::ValueHint;
 use clap::ArgAction;
 use colored::Colorize;
 use kythera_lib::{
@@ -19,6 +21,12 @@ use self::gas_report::GasReport;
 #[derive(clap::Args, Debug)]
 pub struct Args {
     /// Actor files dir.
+    #[clap(
+        long,
+        default_value = ARTIFACTS_DIR,
+        value_hint = ValueHint::FilePath,
+        value_name = "DIR",
+    )]
     path: PathBuf,
 
     /// Verbosity of the traces.
