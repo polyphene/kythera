@@ -4,8 +4,8 @@ Sections #
 Getting started
 To get started with Kythera, install Kythera and setup your first project.</description></item><item><title>Installation</title><link>https://polyphene.github.io/kythera/docs/getting-started/installation/</link><pubDate>Mon, 22 May 2023 10:00:00 +0000</pubDate><guid>https://polyphene.github.io/kythera/docs/getting-started/installation/</guid><description>Building from source #
 You can build Kythera binary directly from our main repository through cargo:
-$ cargo install --git https://github.com/polyphene/kythera --force kythera-cli</description></item><item><title>First Steps with Kythera</title><link>https://polyphene.github.io/kythera/docs/getting-started/first-steps/</link><pubDate>Mon, 22 May 2023 10:00:00 +0000</pubDate><guid>https://polyphene.github.io/kythera/docs/getting-started/first-steps/</guid><description>This section provide a quick example of how to use the kythera command line tool. We demonstrate how to start up a Rust-based native actors project, compile and test it.
-🗒️ Note
-Future base project for Assembly Script and Golang will soon be created to assist developers more familiar with those languages.
-To start the development clone our dedicated Rust template:
-$ git clone https://github.com/polyphene/kythera-rs-starter.git Let&amp;rsquo;s see how the project layout looks like:</description></item></channel></rss>
+$ cargo install --git https://github.com/polyphene/kythera --force kythera-cli Local project #
+You can build Kythera binary through a local clone of the project.
+First, clone the repository:
+$ git clone https://github.com/polyphene/kythera.git Then, run:
+$ cargo build --bin kythera The Kythera binary should now be accessible at the root of the project.</description></item></channel></rss>
