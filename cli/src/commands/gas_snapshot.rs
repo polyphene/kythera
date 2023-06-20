@@ -13,12 +13,19 @@ use colored::Colorize;
 use kythera_lib::Tester;
 use serde::{Deserialize, Serialize};
 
+use crate::commands::ARTIFACTS_DIR;
 use crate::utils::search::search_files;
 
 /// Kythera gas_snapshot command cli arguments.
 #[derive(clap::Args, Debug)]
 pub struct Args {
     /// Actor files dir.
+    #[clap(
+        long,
+        default_value = ARTIFACTS_DIR,
+        value_hint = ValueHint::FilePath,
+        value_name = "DIR",
+    )]
     path: PathBuf,
 
     /// Output file for the snapshot.
