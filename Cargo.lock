@@ -2432,7 +2432,7 @@ dependencies = [
  "fvm_shared 3.2.0",
  "kythera-common",
  "log",
- "multihash 0.16.3",
+ "multihash 0.18.1",
 ]
 
 [[package]]
