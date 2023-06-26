@@ -21,7 +21,7 @@ path = "src/main.rs"
 anyhow = "1.0.70"
 clap = { version = "4.1.11", features = ["derive"] }
 colored = "2.0.0"
-comfy-table = "6.1.4"
+comfy-table = "7.0.1"
 csv = "1.2.1"
 env_logger = "0.10.0"
 kythera-lib = { version = "0.2.0", path = "../lib", features = ["colors"] }
