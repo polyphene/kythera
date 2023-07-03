@@ -180,7 +180,7 @@ checksum = "b9ccdd8f2a161be9bd5c023df56f1b2a0bd1d83872ae53b71a84a12c9bf6e842"
 dependencies = [
  "proc-macro2",
  "quote",
- "syn 2.0.18",
+ "syn 2.0.23",
 ]
 
 [[package]]
@@ -233,7 +233,7 @@ version = "0.1.0"
 dependencies = [
  "cid 0.8.6",
  "frc42_dispatch",
- "fvm_ipld_blockstore",
+ "fvm_ipld_blockstore 0.1.2",
  "fvm_ipld_encoding 0.3.3",
  "fvm_sdk 3.2.0",
  "fvm_shared 3.2.0",
@@ -248,7 +248,7 @@ version = "0.1.0"
 dependencies = [
  "cid 0.8.6",
  "frc42_dispatch",
- "fvm_ipld_blockstore",
+ "fvm_ipld_blockstore 0.1.2",
  "fvm_ipld_encoding 0.3.3",
  "fvm_sdk 3.2.0",
  "fvm_shared 3.2.0",
@@ -522,7 +522,7 @@ dependencies = [
  "cid 0.10.1",
  "fil_actors_runtime_v10 1.0.0",
  "frc42_dispatch",
- "fvm_ipld_blockstore",
+ "fvm_ipld_blockstore 0.1.2",
  "fvm_ipld_encoding 0.3.3",
  "fvm_sdk 3.2.0",
  "fvm_shared 3.2.0",
@@ -555,6 +555,7 @@ dependencies = [
  "multibase",
  "multihash 0.18.1",
  "serde",
+ "serde_bytes",
  "unsigned-varint",
 ]
 
@@ -601,7 +602,7 @@ dependencies = [
  "heck",
  "proc-macro2",
  "quote",
- "syn 2.0.18",
+ "syn 2.0.23",
 ]
 
 [[package]]
@@ -1146,7 +1147,7 @@ checksum = "55a9a55d1dab3b07854648d48e366f684aefe2ac78ae28cec3bf65e3cd53d9a3"
 dependencies = [
  "execute-command-tokens",
  "quote",
- "syn 2.0.18",
+ "syn 2.0.23",
 ]
 
 [[package]]
@@ -1241,7 +1242,7 @@ dependencies = [
  "fil_actors_runtime_v10 2.0.0",
  "frc42_dispatch",
  "frc46_token",
- "fvm_ipld_blockstore",
+ "fvm_ipld_blockstore 0.1.2",
  "fvm_ipld_encoding 0.3.3",
  "fvm_shared 3.2.0",
  "num-derive",
@@ -1271,7 +1272,7 @@ dependencies = [
  "cid 0.8.6",
  "fil_actors_runtime_v10 2.0.0",
  "frc42_dispatch",
- "fvm_ipld_blockstore",
+ "fvm_ipld_blockstore 0.1.2",
  "fvm_ipld_encoding 0.3.3",
  "fvm_shared 3.2.0",
  "num-derive",
@@ -1290,7 +1291,7 @@ dependencies = [
  "fil_actors_runtime_v10 2.0.0",
  "frc42_dispatch",
  "fvm_ipld_bitfield",
- "fvm_ipld_blockstore",
+ "fvm_ipld_blockstore 0.1.2",
  "fvm_ipld_encoding 0.3.3",
  "fvm_ipld_hamt 0.6.1",
  "fvm_shared 3.2.0",
@@ -1313,7 +1314,7 @@ dependencies = [
  "frc42_dispatch",
  "fvm_ipld_amt 0.5.1",
  "fvm_ipld_bitfield",
- "fvm_ipld_blockstore",
+ "fvm_ipld_blockstore 0.1.2",
  "fvm_ipld_encoding 0.3.3",
  "fvm_ipld_hamt 0.6.1",
  "fvm_shared 3.2.0",
@@ -1334,7 +1335,7 @@ dependencies = [
  "cid 0.8.6",
  "fil_actors_runtime_v10 2.0.0",
  "frc42_dispatch",
- "fvm_ipld_blockstore",
+ "fvm_ipld_blockstore 0.1.2",
  "fvm_ipld_encoding 0.3.3",
  "fvm_ipld_hamt 0.6.1",
  "fvm_shared 3.2.0",
@@ -1371,7 +1372,7 @@ dependencies = [
  "cid 0.8.6",
  "fil_actors_runtime_v10 2.0.0",
  "frc42_dispatch",
- "fvm_ipld_blockstore",
+ "fvm_ipld_blockstore 0.1.2",
  "fvm_ipld_encoding 0.3.3",
  "fvm_ipld_hamt 0.6.1",
  "fvm_shared 3.2.0",
@@ -1419,7 +1420,7 @@ dependencies = [
  "cid 0.8.6",
  "fil_actors_runtime_v10 2.0.0",
  "frc42_dispatch",
- "fvm_ipld_blockstore",
+ "fvm_ipld_blockstore 0.1.2",
  "fvm_ipld_encoding 0.3.3",
  "fvm_shared 3.2.0",
  "num-derive",
@@ -1436,7 +1437,7 @@ dependencies = [
  "anyhow",
  "cid 0.8.6",
  "fvm_ipld_amt 0.5.1",
- "fvm_ipld_blockstore",
+ "fvm_ipld_blockstore 0.1.2",
  "fvm_ipld_encoding 0.3.3",
  "fvm_ipld_hamt 0.6.1",
  "fvm_shared 3.2.0",
@@ -1461,7 +1462,7 @@ dependencies = [
  "anyhow",
  "cid 0.8.6",
  "fvm_ipld_amt 0.5.1",
- "fvm_ipld_blockstore",
+ "fvm_ipld_blockstore 0.1.2",
  "fvm_ipld_encoding 0.3.3",
  "fvm_ipld_hamt 0.6.1",
  "fvm_shared 3.2.0",
@@ -1668,7 +1669,7 @@ dependencies = [
  "frc42_dispatch",
  "fvm_actor_utils",
  "fvm_ipld_amt 0.4.2",
- "fvm_ipld_blockstore",
+ "fvm_ipld_blockstore 0.1.2",
  "fvm_ipld_encoding 0.2.3",
  "fvm_ipld_hamt 0.5.1",
  "fvm_sdk 2.2.0",
@@ -1752,7 +1753,7 @@ checksum = "89ca545a94061b6365f2c7355b4b32bd20df3ff95f02da9329b34ccc3bd6ee72"
 dependencies = [
  "proc-macro2",
  "quote",
- "syn 2.0.18",
+ "syn 2.0.23",
 ]
 
 [[package]]
@@ -1798,7 +1799,7 @@ dependencies = [
  "filecoin-proofs-api",
  "fvm-wasm-instrument",
  "fvm_ipld_amt 0.5.1",
- "fvm_ipld_blockstore",
+ "fvm_ipld_blockstore 0.1.2",
  "fvm_ipld_encoding 0.3.3",
  "fvm_ipld_hamt 0.6.1",
  "fvm_shared 3.2.0",
@@ -1842,7 +1843,7 @@ dependencies = [
  "anyhow",
  "cid 0.8.6",
  "frc42_dispatch",
- "fvm_ipld_blockstore",
+ "fvm_ipld_blockstore 0.1.2",
  "fvm_ipld_encoding 0.2.3",
  "fvm_sdk 2.2.0",
  "fvm_shared 2.4.0",
@@ -1861,7 +1862,7 @@ dependencies = [
  "ahash",
  "anyhow",
  "cid 0.8.6",
- "fvm_ipld_blockstore",
+ "fvm_ipld_blockstore 0.1.2",
  "fvm_ipld_encoding 0.2.3",
  "itertools 0.10.5",
  "once_cell",
@@ -1877,7 +1878,7 @@ checksum = "e84f16d6927ce342ef86bd20fcc2d5bd498ed33ae6d7a22fea7a1b453488ec88"
 dependencies = [
  "anyhow",
  "cid 0.8.6",
- "fvm_ipld_blockstore",
+ "fvm_ipld_blockstore 0.1.2",
  "fvm_ipld_encoding 0.3.3",
  "itertools 0.10.5",
  "once_cell",
@@ -1909,15 +1910,26 @@ dependencies = [
 ]
 
 [[package]]
-name = "fvm_ipld_car"
-version = "0.6.0"
+name = "fvm_ipld_blockstore"
+version = "0.2.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "c60423568393a284de6d7c342cd664690611f27d223eb78629fa568ddd4e7951"
+checksum = "417f52f6915b9f9a68de8462e1cf46f14a2c16420f484b8d2066873de2ffe420"
 dependencies = [
- "cid 0.8.6",
+ "anyhow",
+ "cid 0.10.1",
+ "multihash 0.18.1",
+]
+
+[[package]]
+name = "fvm_ipld_car"
+version = "0.7.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "42a70f56d42a428d60b89440136428f8af7abc723dcf6d763d82e28d518a8141"
+dependencies = [
+ "cid 0.10.1",
  "futures",
- "fvm_ipld_blockstore",
- "fvm_ipld_encoding 0.3.3",
+ "fvm_ipld_blockstore 0.2.0",
+ "fvm_ipld_encoding 0.4.0",
  "integer-encoding",
  "serde",
  "thiserror",
@@ -1932,10 +1944,10 @@ dependencies = [
  "anyhow",
  "cid 0.8.6",
  "cs_serde_bytes",
- "fvm_ipld_blockstore",
+ "fvm_ipld_blockstore 0.1.2",
  "multihash 0.16.3",
  "serde",
- "serde_ipld_dagcbor",
+ "serde_ipld_dagcbor 0.2.2",
  "serde_repr",
  "serde_tuple",
  "thiserror",
@@ -1949,10 +1961,27 @@ checksum = "f0816a2a6df4853de08a723d261110d56a121aa313bc570fe9d248f0a4bc5288"
 dependencies = [
  "anyhow",
  "cid 0.8.6",
- "fvm_ipld_blockstore",
+ "fvm_ipld_blockstore 0.1.2",
  "multihash 0.16.3",
  "serde",
- "serde_ipld_dagcbor",
+ "serde_ipld_dagcbor 0.2.2",
+ "serde_repr",
+ "serde_tuple",
+ "thiserror",
+]
+
+[[package]]
+name = "fvm_ipld_encoding"
+version = "0.4.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "90608092e31d9a06236268c58f7c36668ab4b2a48afafe3a97e08f094ad7ae50"
+dependencies = [
+ "anyhow",
+ "cid 0.10.1",
+ "fvm_ipld_blockstore 0.2.0",
+ "multihash 0.18.1",
+ "serde",
+ "serde_ipld_dagcbor 0.4.0",
  "serde_repr",
  "serde_tuple",
  "thiserror",
@@ -1969,7 +1998,7 @@ dependencies = [
  "cid 0.8.6",
  "cs_serde_bytes",
  "forest_hash_utils",
- "fvm_ipld_blockstore",
+ "fvm_ipld_blockstore 0.1.2",
  "fvm_ipld_encoding 0.2.3",
  "libipld-core 0.13.1",
  "multihash 0.16.3",
@@ -1989,7 +2018,7 @@ dependencies = [
  "byteorder",
  "cid 0.8.6",
  "forest_hash_utils",
- "fvm_ipld_blockstore",
+ "fvm_ipld_blockstore 0.1.2",
  "fvm_ipld_encoding 0.3.3",
  "libipld-core 0.14.0",
  "multihash 0.16.3",
@@ -2042,7 +2071,7 @@ dependencies = [
  "cs_serde_bytes",
  "data-encoding",
  "data-encoding-macro",
- "fvm_ipld_blockstore",
+ "fvm_ipld_blockstore 0.1.2",
  "fvm_ipld_encoding 0.2.3",
  "lazy_static",
  "log",
@@ -2383,7 +2412,7 @@ version = "0.2.0"
 
 [[package]]
 name = "kythera-cli"
-version = "0.2.0"
+version = "0.2.1"
 dependencies = [
  "anyhow",
  "assert_cmd",
@@ -2427,7 +2456,7 @@ dependencies = [
  "anyhow",
  "cid 0.8.6",
  "fvm",
- "fvm_ipld_blockstore",
+ "fvm_ipld_blockstore 0.1.2",
  "fvm_ipld_encoding 0.3.3",
  "fvm_shared 3.2.0",
  "kythera-common",
@@ -2456,7 +2485,7 @@ dependencies = [
  "fil_actor_verifreg_v10",
  "fil_actors_runtime_v10 2.0.0",
  "futures",
- "fvm_ipld_blockstore",
+ "fvm_ipld_blockstore 0.1.2",
  "fvm_ipld_car",
  "fvm_ipld_encoding 0.3.3",
  "fvm_shared 3.2.0",
@@ -2745,6 +2774,8 @@ dependencies = [
  "core2",
  "digest 0.10.7",
  "multihash-derive",
+ "serde",
+ "serde-big-array",
  "sha2 0.10.6",
  "sha3",
  "unsigned-varint",
@@ -3085,9 +3116,9 @@ dependencies = [
 
 [[package]]
 name = "proc-macro2"
-version = "1.0.59"
+version = "1.0.63"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "6aeca18b86b413c660b781aa319e4e2648a3e6f9eadc9b47e9038e6fe9f3451b"
+checksum = "7b368fba921b0dce7e60f5e04ec15e565b3303972b42bcfde1d0713b881959eb"
 dependencies = [
  "unicode-ident",
 ]
@@ -3323,9 +3354,9 @@ checksum = "bebd363326d05ec3e2f532ab7660680f3b02130d780c299bca73469d521bc0ed"
 
 [[package]]
 name = "serde"
-version = "1.0.163"
+version = "1.0.165"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "2113ab51b87a539ae008b5c6c02dc020ffa39afd2d83cffcb3f4eb2722cebec2"
+checksum = "c939f902bb7d0ccc5bce4f03297e161543c2dcb30914faf032c2bd0b7a0d48fc"
 dependencies = [
  "serde_derive",
 ]
@@ -3350,13 +3381,13 @@ dependencies = [
 
 [[package]]
 name = "serde_derive"
-version = "1.0.163"
+version = "1.0.165"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "8c805777e3930c8883389c602315a24224bcc738b63905ef87cd1420353ea93e"
+checksum = "6eaae920e25fffe4019b75ff65e7660e72091e59dd204cb5849bbd6a3fd343d7"
 dependencies = [
  "proc-macro2",
  "quote",
- "syn 2.0.18",
+ "syn 2.0.23",
 ]
 
 [[package]]
@@ -3367,6 +3398,18 @@ checksum = "c1e23de7a4a18dff77ab9531f279a882500b8cf3549fde044d4e10481b411f1e"
 dependencies = [
  "cbor4ii",
  "cid 0.8.6",
+ "scopeguard",
+ "serde",
+]
+
+[[package]]
+name = "serde_ipld_dagcbor"
+version = "0.4.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "ace39c1b7526be78c755a4c698313f699cf44e62408c0029bf9ab9450fe836da"
+dependencies = [
+ "cbor4ii",
+ "cid 0.10.1",
  "scopeguard",
  "serde",
 ]
@@ -3390,7 +3433,7 @@ checksum = "bcec881020c684085e55a25f7fd888954d56609ef363479dc5a1305eb0d40cab"
 dependencies = [
  "proc-macro2",
  "quote",
- "syn 2.0.18",
+ "syn 2.0.23",
 ]
 
 [[package]]
@@ -3723,9 +3766,9 @@ dependencies = [
 
 [[package]]
 name = "syn"
-version = "2.0.18"
+version = "2.0.23"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "32d41677bcbe24c20c52e7c70b0d8db04134c5d1066bf98662e2871ad200ea3e"
+checksum = "59fb7d6d8281a51045d62b8eb3a7d1ce347b76f312af50cd3dc0af39c87c1737"
 dependencies = [
  "proc-macro2",
  "quote",
@@ -3801,7 +3844,7 @@ checksum = "f9456a42c5b0d803c8cd86e73dd7cc9edd429499f37a3550d286d5e86720569f"
 dependencies = [
  "proc-macro2",
  "quote",
- "syn 2.0.18",
+ "syn 2.0.23",
 ]
 
 [[package]]
@@ -4471,5 +4514,5 @@ checksum = "ce36e65b0d2999d2aafac989fb249189a141aee1f53c612c1f37d72631959f69"
 dependencies = [
  "proc-macro2",
  "quote",
- "syn 2.0.18",
+ "syn 2.0.23",
 ]
