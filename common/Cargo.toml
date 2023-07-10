@@ -14,7 +14,7 @@ readme="README.md"
 [dependencies]
 anyhow = "1.0.70"
 blake2b_simd = { version = "1.0.0" }
-frc42_dispatch = "3.1.0"
+frc42_dispatch = "3.3.0"
 fvm_ipld_encoding = { version = "0.3.3" }
 serde = { version = "1.0.136", features = ["derive"] }
 serde_tuple = { version = "0.5.0" }
