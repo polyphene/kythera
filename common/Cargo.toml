@@ -12,7 +12,7 @@ readme="README.md"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-anyhow = "1.0.70"
+anyhow = "1.0.72"
 blake2b_simd = { version = "1.0.0" }
 frc42_dispatch = "3.1.0"
 fvm_ipld_encoding = { version = "0.3.3" }
