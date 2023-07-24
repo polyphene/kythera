@@ -38,6 +38,6 @@ wat = "1.0.61"
 assert_cmd = "2.0.10"
 assert_fs = "1.0.12"
 predicates = "3.0.2"
-tempfile = "3.4.0"
+tempfile = "3.7.0"
 wat = "1.0.61"
 kythera-actors = { path = "../actors", features = ["testing"] }
