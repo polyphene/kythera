@@ -32,12 +32,12 @@ serde = { version = "1.0.158", features = ["derive"] }
 serde_yaml = "0.9.19"
 thiserror = "1.0.40"
 walkdir = "2.3.3"
-wat = "1.0.61"
+wat = "1.0.70"
 
 [dev-dependencies]
 assert_cmd = "2.0.10"
 assert_fs = "1.0.12"
 predicates = "3.0.2"
 tempfile = "3.4.0"
-wat = "1.0.61"
+wat = "1.0.70"
 kythera-actors = { path = "../actors", features = ["testing"] }
