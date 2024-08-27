@@ -22,7 +22,7 @@ jobs:
     outputs:
       crates: ${{ steps.filter.outputs.changes }}
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
       - uses: dorny/paths-filter@v2
         id: filter
         with:
@@ -45,7 +45,7 @@ jobs:
       matrix:
         crate: ${{ fromJSON(needs.gather_crates.outputs.crates) }}
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
 
       # Publication flow should run on merge on the `main` branch
       - name: Publish
