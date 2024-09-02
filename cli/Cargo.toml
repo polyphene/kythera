@@ -23,7 +23,7 @@ clap = { version = "4.1.11", features = ["derive"] }
 colored = "2.0.0"
 comfy-table = "6.1.4"
 csv = "1.2.1"
-env_logger = "0.10.0"
+env_logger = "0.10.2"
 kythera-lib = { version = "0.2.0", path = "../lib", features = ["colors"] }
 log = "0.4.17"
 optional_struct = "0.3.1"
