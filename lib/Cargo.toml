@@ -35,7 +35,7 @@ fil_actors_runtime_v10 = "2.0.0"
 fvm_ipld_blockstore = { version = "0.1.1" }
 fvm_ipld_car = { version = "0.6.0" }
 fvm_ipld_encoding = { version = "0.3.3" }
-fvm_shared = { version = "3.2.0", features = ["testing"] }
+fvm_shared = { version = "4.4.4", features = ["testing"] }
 
 kythera-actors = { path = "../actors", version = "0.2.0" }
 kythera-fvm = { path = "../fvm", version = "0.2.0" }
